@@ -1,4 +1,4 @@
--- crane.lua v1.5.1 — CC: Create crane controller
+-- crane.lua v1.5.2 — CC: Create crane controller
 -- Loads configuration from config.lua in the same directory.
 --
 -- Usage: crane <srcX> <srcY> <dstX> <dstY>
@@ -36,6 +36,7 @@ local function saveState()
     end
     f.write(textutils.serialize(state, { compact = true }))
     f.close()
+    fs.delete(STATE_FILE)
     fs.move(STATE_FILE_TMP, STATE_FILE)
 end
 
