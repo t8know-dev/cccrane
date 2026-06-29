@@ -1,12 +1,14 @@
--- crane.lua v1.4.3
+-- crane.lua v1.4.4
 
 ------------------------------------------------------------
 -- KONFIGURACJA CZASÓW
 ------------------------------------------------------------
 
-local MAX_X = 56
-local MAX_Y = 97
+local MAX_X = 97
+local MAX_Y = 56
 local LIFT_HEIGHT = 23    -- FIXED: was 5 (spec says 4 blocks)
+local TRANSPORT_LOWER = 10 -- o ile nizej niz max LIFT_HEIGHT ma byc opuszczony ladunek podczas
+                           -- transportu. Wynikowa wysokosc = LIFT_HEIGHT - TRANSPORT_LOWER (dom. 13)
 
 -- Przesuniecie home: po homingu dzwig jest fizycznie na pozycji
 -- (HOME_OFFSET_X, HOME_OFFSET_Y) w ukladzie wspolrzednych swiata.
@@ -19,18 +21,18 @@ local STICKER_TOGGLE_DELAY = 0.1
 local AXIS_SWITCH_DELAY = 0.1
 local MOVE_SETTLE_DELAY = 0.2
 
-local gear = peripheral.wrap("Create_SequencedGearshift_0")
+local gear = peripheral.wrap("right")
 
 -- Pojedynczy redstone relay sterujacy sygnalami na 3 stronach
-local relay = peripheral.wrap("redstone_relay_13")
+local relay = peripheral.wrap("bottom")
 
 local AXIS_SIDE = "back"
 local LIFT_SIDE = "left"
 local STICKER_SIDE = "bottom"
 
 -- Inverse mode dla osi
-local INVERSE_X = true
-local INVERSE_Y = false
+local INVERSE_X = false
+local INVERSE_Y = true
 
 ------------------------------------------------------------
 -- HELPERS
@@ -300,6 +302,11 @@ gotoXY(srcX, srcY)
 
 pickup()
 
+-- opusc na wyzsosc transportowa (LIFT_HEIGHT - TRANSPORT_LOWER)
+print("Lower for transport (" .. TRANSPORT_LOWER .. ")")
+enableLift()
+runMove(TRANSPORT_LOWER, 1)
+
 print("Switch X -> Y")
 
 moveY(dstY)
@@ -307,6 +314,11 @@ moveY(dstY)
 print("Switch Y -> X")
 
 moveX(dstX)
+
+-- podnies z powrotem na pełna wysokosc przed dropem
+print("Raise for drop (" .. TRANSPORT_LOWER .. ")")
+enableLift()
+runMove(TRANSPORT_LOWER, -1)
 
 drop()
 
