@@ -1,18 +1,18 @@
--- crane.lua v1.4.2
+-- crane.lua v1.4.3
 
 ------------------------------------------------------------
 -- KONFIGURACJA CZASÓW
 ------------------------------------------------------------
 
-local MAX_X = 15
-local MAX_Y = 15
-local LIFT_HEIGHT = 4    -- FIXED: was 5 (spec says 4 blocks)
+local MAX_X = 56
+local MAX_Y = 97
+local LIFT_HEIGHT = 23    -- FIXED: was 5 (spec says 4 blocks)
 
 -- Przesuniecie home: po homingu dzwig jest fizycznie na pozycji
 -- (HOME_OFFSET_X, HOME_OFFSET_Y) w ukladzie wspolrzednych swiata.
 -- W Create bloki sa 1-indeksowane, wiec domyslnie offset = 1.
-local HOME_OFFSET_X = 1
-local HOME_OFFSET_Y = 1
+local HOME_OFFSET_X = 0
+local HOME_OFFSET_Y = 0
 
 local RELAY_DELAY = 0.1
 local STICKER_TOGGLE_DELAY = 0.1
@@ -21,11 +21,16 @@ local MOVE_SETTLE_DELAY = 0.2
 
 local gear = peripheral.wrap("Create_SequencedGearshift_0")
 
-local axisRelay = peripheral.wrap("redstone_relay_13")
-local liftRelay = peripheral.wrap("redstone_relay_14")
-local stickerRelay = peripheral.wrap("redstone_relay_15")
+-- Pojedynczy redstone relay sterujacy sygnalami na 3 stronach
+local relay = peripheral.wrap("redstone_relay_13")
 
-local SIDE = "front"
+local AXIS_SIDE = "back"
+local LIFT_SIDE = "left"
+local STICKER_SIDE = "bottom"
+
+-- Inverse mode dla osi
+local INVERSE_X = true
+local INVERSE_Y = false
 
 ------------------------------------------------------------
 -- HELPERS
@@ -88,14 +93,14 @@ end
 ------------------------------------------------------------
 
 local function resetRelays()
-    axisRelay.setOutput(SIDE, false)
-    liftRelay.setOutput(SIDE, false)
-    stickerRelay.setOutput(SIDE, false)
+    relay.setOutput(AXIS_SIDE, false)
+    relay.setOutput(LIFT_SIDE, false)
+    relay.setOutput(STICKER_SIDE, false)
     relayTick()
 end
 
 local function enableLift()
-    liftRelay.setOutput(SIDE, true)
+    relay.setOutput(LIFT_SIDE, true)
     relayTick()
 end
 
@@ -103,10 +108,10 @@ end
 -- PULSE SYSTEM (STICKER)
 ------------------------------------------------------------
 
-local function pulse(relay)
-    relay.setOutput(SIDE, true)
+local function pulse(side)
+    relay.setOutput(side, true)
     shortTick()
-    relay.setOutput(SIDE, false)
+    relay.setOutput(side, false)
     shortTick()
 end
 
@@ -115,11 +120,11 @@ end
 ------------------------------------------------------------
 
 local function stickerGrab()
-    pulse(stickerRelay) -- OFF -> ON (toggle latch)
+    pulse(STICKER_SIDE) -- OFF -> ON (toggle latch)
 end
 
 local function stickerRelease()
-    pulse(stickerRelay) -- ON -> OFF (toggle latch)
+    pulse(STICKER_SIDE) -- ON -> OFF (toggle latch)
 end
 
 ------------------------------------------------------------
@@ -128,15 +133,15 @@ end
 
 local function selectX()
     waitUntilStopped()
-    axisRelay.setOutput(SIDE, false)
-    liftRelay.setOutput(SIDE, false)
+    relay.setOutput(AXIS_SIDE, false)
+    relay.setOutput(LIFT_SIDE, false)
     axisTick()
 end
 
 local function selectY()
     waitUntilStopped()
-    axisRelay.setOutput(SIDE, true)
-    liftRelay.setOutput(SIDE, false)
+    relay.setOutput(AXIS_SIDE, true)
+    relay.setOutput(LIFT_SIDE, false)
     axisTick()
 end
 
@@ -175,6 +180,9 @@ local function moveX(target)
     if target == currentX then return end
     local dx = target - currentX
     selectX()
+    if INVERSE_X then
+        dx = -dx
+    end
     if dx > 0 then
         moveForward(dx)
     else
@@ -228,7 +236,11 @@ local function home()
     moveBackward(MAX_Y)
 
     selectX()
-    moveBackward(MAX_X)
+    if INVERSE_X then
+        moveForward(MAX_X)
+    else
+        moveBackward(MAX_X)
+    end
 
     waitUntilStopped()
 
