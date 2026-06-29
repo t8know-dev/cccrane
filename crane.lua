@@ -1,4 +1,4 @@
--- crane.lua v1.4.4
+-- crane.lua v1.4.5
 
 ------------------------------------------------------------
 -- KONFIGURACJA CZASÓW
@@ -216,11 +216,29 @@ local function lower()
     runMove(LIFT_HEIGHT, 1)
 end
 
+local function lowerTo(amount)
+    if amount <= 0 then return end
+    print("lower " .. amount)
+
+    enableLift()
+    runMove(amount, 1)
+end
+
+local TRANSPORT_HEIGHT = LIFT_HEIGHT - TRANSPORT_LOWER
+
 local function raise()
     print("raise " .. LIFT_HEIGHT)
 
     enableLift()
     runMove(LIFT_HEIGHT, -1)
+end
+
+local function raiseTo(amount)
+    if amount <= 0 then return end
+    print("raise " .. amount)
+
+    enableLift()
+    runMove(amount, -1)
 end
 
 ------------------------------------------------------------
@@ -275,13 +293,13 @@ local function pickup()
     print("Sticker GRAB")
     stickerGrab()
 
-    print("Raise")
-    raise()
+    print("Raise for transport")
+    raiseTo(TRANSPORT_HEIGHT)
 end
 
 local function drop()
-    print("Lower")
-    lower()
+    print("Lower for drop")
+    lowerTo(TRANSPORT_HEIGHT)
 
     print("Sticker RELEASE")
     stickerRelease()    -- FIXED: bylo stickerGrab() - zwalniamy blok, nie chwytamy
@@ -302,11 +320,6 @@ gotoXY(srcX, srcY)
 
 pickup()
 
--- opusc na wyzsosc transportowa (LIFT_HEIGHT - TRANSPORT_LOWER)
-print("Lower for transport (" .. TRANSPORT_LOWER .. ")")
-enableLift()
-runMove(TRANSPORT_LOWER, 1)
-
 print("Switch X -> Y")
 
 moveY(dstY)
@@ -314,11 +327,6 @@ moveY(dstY)
 print("Switch Y -> X")
 
 moveX(dstX)
-
--- podnies z powrotem na pełna wysokosc przed dropem
-print("Raise for drop (" .. TRANSPORT_LOWER .. ")")
-enableLift()
-runMove(TRANSPORT_LOWER, -1)
 
 drop()
 
