@@ -1,54 +1,91 @@
--- crane.lua v1.4.5
+-- crane.lua v1.5.0 — CC: Create crane controller
+-- Loads configuration from config.lua in the same directory.
+--
+-- Usage: crane <srcX> <srcY> <dstX> <dstY>
+--
+-- State persistence:
+--   The crane tracks its position, sticker state, and whether an operation
+--   is in progress in a file (/.crane-state). This survives chunk unloads so
+--   that homing can be skipped when the crane shut down cleanly. If the crane
+--   was interrupted mid-operation (chunk unload / Ctrl+T), the next run will
+--   detect craneRunning=true and perform a full homing cycle.
+
+local cfg = dofile("config.lua")
+
+local STATE_FILE = ".crane-state"
+local STATE_FILE_TMP = ".crane-state.tmp"
+local STATE_VERSION = 1
 
 ------------------------------------------------------------
--- KONFIGURACJA CZASÓW
+-- STATE
 ------------------------------------------------------------
 
-local MAX_X = 97
-local MAX_Y = 56
-local LIFT_HEIGHT = 23    -- FIXED: was 5 (spec says 4 blocks)
-local TRANSPORT_LOWER = 10 -- o ile nizej niz max LIFT_HEIGHT ma byc opuszczony ladunek podczas
-                           -- transportu. Wynikowa wysokosc = LIFT_HEIGHT - TRANSPORT_LOWER (dom. 13)
+local state = {
+    version = STATE_VERSION,
+    currentX = 0,
+    currentY = 0,
+    stickerOn = false,
+    craneRunning = false,
+}
 
--- Przesuniecie home: po homingu dzwig jest fizycznie na pozycji
--- (HOME_OFFSET_X, HOME_OFFSET_Y) w ukladzie wspolrzednych swiata.
--- W Create bloki sa 1-indeksowane, wiec domyslnie offset = 1.
-local HOME_OFFSET_X = 0
-local HOME_OFFSET_Y = 0
+local function saveState()
+    local f = fs.open(STATE_FILE_TMP, "w")
+    if not f then
+        print("WARNING: could not write state (tmp)")
+        return
+    end
+    f.write(textutils.serialize(state, { compact = true }))
+    f.close()
+    fs.move(STATE_FILE_TMP, STATE_FILE)
+end
 
-local RELAY_DELAY = 0.1
-local STICKER_TOGGLE_DELAY = 0.1
-local AXIS_SWITCH_DELAY = 0.1
-local MOVE_SETTLE_DELAY = 0.2
+local function loadState()
+    if not fs.exists(STATE_FILE) then
+        return false
+    end
+    local f = fs.open(STATE_FILE, "r")
+    if not f then
+        return false
+    end
+    local content = f.readAll()
+    f.close()
 
-local gear = peripheral.wrap("right")
+    local ok, result = pcall(textutils.unserialize, content)
+    if not ok or type(result) ~= "table" then
+        return false
+    end
 
--- Pojedynczy redstone relay sterujacy sygnalami na 3 stronach
-local relay = peripheral.wrap("bottom")
+    -- Merge loaded data with known defaults (forward compat)
+    if type(result.currentX) == "number" then state.currentX = result.currentX end
+    if type(result.currentY) == "number" then state.currentY = result.currentY end
+    if type(result.stickerOn) == "boolean" then state.stickerOn = result.stickerOn end
+    if type(result.craneRunning) == "boolean" then state.craneRunning = result.craneRunning end
 
-local AXIS_SIDE = "back"
-local LIFT_SIDE = "left"
-local STICKER_SIDE = "bottom"
-
--- Inverse mode dla osi
-local INVERSE_X = false
-local INVERSE_Y = true
+    return true
+end
 
 ------------------------------------------------------------
 -- HELPERS
 ------------------------------------------------------------
 
 local function relayTick()
-    sleep(RELAY_DELAY)
+    sleep(cfg.RELAY_DELAY)
 end
 
 local function shortTick()
-    sleep(STICKER_TOGGLE_DELAY)
+    sleep(cfg.STICKER_TOGGLE_DELAY)
 end
 
 local function axisTick()
-    sleep(AXIS_SWITCH_DELAY)
+    sleep(cfg.AXIS_SWITCH_DELAY)
 end
+
+------------------------------------------------------------
+-- PERIPHERALS
+------------------------------------------------------------
+
+local gear = peripheral.wrap(cfg.GEAR_PERIPHERAL)
+local relay = peripheral.wrap(cfg.RELAY_PERIPHERAL)
 
 ------------------------------------------------------------
 -- ARGUMENTY
@@ -73,10 +110,10 @@ local function check(v, name, max)
     end
 end
 
-check(srcX, "srcX", MAX_X)
-check(srcY, "srcY", MAX_Y)
-check(dstX, "dstX", MAX_X)
-check(dstY, "dstY", MAX_Y)
+check(srcX, "srcX", cfg.MAX_X)
+check(srcY, "srcY", cfg.MAX_Y)
+check(dstX, "dstX", cfg.MAX_X)
+check(dstY, "dstY", cfg.MAX_Y)
 
 ------------------------------------------------------------
 -- WAIT
@@ -86,8 +123,7 @@ local function waitUntilStopped()
     while gear.isRunning() do
         sleep(0.1)
     end
-    -- dodatkowy delay po zatrzymaniu (domyslnie 8 tick)
-    sleep(MOVE_SETTLE_DELAY)
+    sleep(cfg.MOVE_SETTLE_DELAY)
 end
 
 ------------------------------------------------------------
@@ -95,14 +131,14 @@ end
 ------------------------------------------------------------
 
 local function resetRelays()
-    relay.setOutput(AXIS_SIDE, false)
-    relay.setOutput(LIFT_SIDE, false)
-    relay.setOutput(STICKER_SIDE, false)
+    relay.setOutput(cfg.AXIS_SIDE, false)
+    relay.setOutput(cfg.LIFT_SIDE, false)
+    relay.setOutput(cfg.STICKER_SIDE, false)
     relayTick()
 end
 
 local function enableLift()
-    relay.setOutput(LIFT_SIDE, true)
+    relay.setOutput(cfg.LIFT_SIDE, true)
     relayTick()
 end
 
@@ -122,28 +158,41 @@ end
 ------------------------------------------------------------
 
 local function stickerGrab()
-    pulse(STICKER_SIDE) -- OFF -> ON (toggle latch)
+    pulse(cfg.STICKER_SIDE) -- OFF -> ON (toggle latch)
+    state.stickerOn = true
+    saveState()
 end
 
 local function stickerRelease()
-    pulse(STICKER_SIDE) -- ON -> OFF (toggle latch)
+    pulse(cfg.STICKER_SIDE) -- ON -> OFF (toggle latch)
+    state.stickerOn = false
+    saveState()
+end
+
+local function ensureStickerOff()
+    if state.stickerOn then
+        print("Sticker was ON, toggling OFF")
+        pulse(cfg.STICKER_SIDE)
+        state.stickerOn = false
+        saveState()
+    end
 end
 
 ------------------------------------------------------------
--- OSIE
+-- AXES
 ------------------------------------------------------------
 
 local function selectX()
     waitUntilStopped()
-    relay.setOutput(AXIS_SIDE, false)
-    relay.setOutput(LIFT_SIDE, false)
+    relay.setOutput(cfg.AXIS_SIDE, false)
+    relay.setOutput(cfg.LIFT_SIDE, false)
     axisTick()
 end
 
 local function selectY()
     waitUntilStopped()
-    relay.setOutput(AXIS_SIDE, true)
-    relay.setOutput(LIFT_SIDE, false)
+    relay.setOutput(cfg.AXIS_SIDE, true)
+    relay.setOutput(cfg.LIFT_SIDE, false)
     axisTick()
 end
 
@@ -168,21 +217,14 @@ local function moveBackward(distance)
 end
 
 ------------------------------------------------------------
--- POZYCJA (sledzenie bezwzgledne)
-------------------------------------------------------------
-
-local currentX = 0
-local currentY = 0
-
-------------------------------------------------------------
--- OSIE MOVE (relatywnie wzgledem sledzonej pozycji)
+-- AXIS MOVE (relative to tracked position)
 ------------------------------------------------------------
 
 local function moveX(target)
-    if target == currentX then return end
-    local dx = target - currentX
+    if target == state.currentX then return end
+    local dx = target - state.currentX
     selectX()
-    if INVERSE_X then
+    if cfg.INVERSE_X then
         dx = -dx
     end
     if dx > 0 then
@@ -190,53 +232,54 @@ local function moveX(target)
     else
         moveBackward(-dx)
     end
-    currentX = target
+    state.currentX = target
+    saveState()
 end
 
 local function moveY(target)
-    if target == currentY then return end
-    local dy = target - currentY
+    if target == state.currentY then return end
+    local dy = target - state.currentY
     selectY()
+    if cfg.INVERSE_Y then
+        dy = -dy
+    end
     if dy > 0 then
         moveForward(dy)
     else
         moveBackward(-dy)
     end
-    currentY = target
+    state.currentY = target
+    saveState()
 end
 
 ------------------------------------------------------------
--- LINA
+-- LIFT
 ------------------------------------------------------------
 
-local function lower()
-    print("lower " .. LIFT_HEIGHT)
+local TRANSPORT_HEIGHT = cfg.LIFT_HEIGHT - cfg.TRANSPORT_LOWER
 
+local function lower()
+    print("lower " .. cfg.LIFT_HEIGHT)
     enableLift()
-    runMove(LIFT_HEIGHT, 1)
+    runMove(cfg.LIFT_HEIGHT, 1)
 end
 
 local function lowerTo(amount)
     if amount <= 0 then return end
     print("lower " .. amount)
-
     enableLift()
     runMove(amount, 1)
 end
 
-local TRANSPORT_HEIGHT = LIFT_HEIGHT - TRANSPORT_LOWER
-
 local function raise()
-    print("raise " .. LIFT_HEIGHT)
-
+    print("raise " .. cfg.LIFT_HEIGHT)
     enableLift()
-    runMove(LIFT_HEIGHT, -1)
+    runMove(cfg.LIFT_HEIGHT, -1)
 end
 
 local function raiseTo(amount)
     if amount <= 0 then return end
     print("raise " .. amount)
-
     enableLift()
     runMove(amount, -1)
 end
@@ -247,26 +290,27 @@ end
 
 local function home()
     print("Homing...")
-
     resetRelays()
-
     raise()
 
     selectY()
-    moveBackward(MAX_Y)
+    moveBackward(cfg.MAX_Y)
 
     selectX()
-    if INVERSE_X then
-        moveForward(MAX_X)
+    if cfg.INVERSE_X then
+        moveForward(cfg.MAX_X)
     else
-        moveBackward(MAX_X)
+        moveBackward(cfg.MAX_X)
     end
 
     waitUntilStopped()
 
-    currentX = HOME_OFFSET_X
-    currentY = HOME_OFFSET_Y
+    state.currentX = cfg.HOME_OFFSET_X
+    state.currentY = cfg.HOME_OFFSET_Y
+    state.stickerOn = false
+    state.craneRunning = false
 
+    saveState()
     resetRelays()
 end
 
@@ -302,7 +346,7 @@ local function drop()
     lowerTo(TRANSPORT_HEIGHT)
 
     print("Sticker RELEASE")
-    stickerRelease()    -- FIXED: bylo stickerGrab() - zwalniamy blok, nie chwytamy
+    stickerRelease()
 
     print("Raise")
     raise()
@@ -314,22 +358,40 @@ end
 
 resetRelays()
 
-home()
+local loaded = loadState()
+
+if loaded and not state.craneRunning then
+    -- Clean shutdown from previous run — reuse position, no homing needed.
+    print("State loaded, crane idle at (" .. state.currentX .. ", " .. state.currentY .. ")")
+    ensureStickerOff()
+else
+    -- No state, corrupted state, or interrupted mid-operation — full homing.
+    if loaded and state.craneRunning then
+        print("Previous operation was interrupted, homing...")
+    else
+        print("No saved state found, homing...")
+    end
+    home()
+end
+
+-- Mark operation as in-flight so a crash triggers homing on next start
+state.craneRunning = true
+saveState()
 
 gotoXY(srcX, srcY)
-
 pickup()
 
 print("Switch X -> Y")
-
 moveY(dstY)
 
 print("Switch Y -> X")
-
 moveX(dstX)
 
 drop()
-
 resetRelays()
+
+-- Operation completed successfully
+state.craneRunning = false
+saveState()
 
 print("Done.")
