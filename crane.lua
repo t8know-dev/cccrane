@@ -1,4 +1,4 @@
--- crane.lua v1.4.1
+-- crane.lua v1.4.2
 
 ------------------------------------------------------------
 -- KONFIGURACJA CZASÓW
@@ -14,10 +14,10 @@ local LIFT_HEIGHT = 4    -- FIXED: was 5 (spec says 4 blocks)
 local HOME_OFFSET_X = 1
 local HOME_OFFSET_Y = 1
 
-local RELAY_DELAY = 0.4            -- 8 tick
-local STICKER_TOGGLE_DELAY = 0.1   -- 2 tick
-local AXIS_SWITCH_DELAY = 0.4      -- 8 tick
-local MOVE_SETTLE_DELAY = 0.4      -- 8 tick, dodatkowy delay po zakonczeniu ruchu
+local RELAY_DELAY = 0.1
+local STICKER_TOGGLE_DELAY = 0.1
+local AXIS_SWITCH_DELAY = 0.1
+local MOVE_SETTLE_DELAY = 0.2
 
 local gear = peripheral.wrap("Create_SequencedGearshift_0")
 
@@ -77,7 +77,7 @@ check(dstY, "dstY", MAX_Y)
 
 local function waitUntilStopped()
     while gear.isRunning() do
-        sleep(1)
+        sleep(0.1)
     end
     -- dodatkowy delay po zatrzymaniu (domyslnie 8 tick)
     sleep(MOVE_SETTLE_DELAY)
@@ -289,12 +289,10 @@ gotoXY(srcX, srcY)
 pickup()
 
 print("Switch X -> Y")
-stickerGrab()
 
 moveY(dstY)
 
 print("Switch Y -> X")
-stickerGrab()
 
 moveX(dstX)
 
