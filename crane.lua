@@ -1,4 +1,4 @@
--- crane.lua v1.5.3 — CC: Create crane controller
+-- crane.lua v1.5.4 — CC: Create crane controller
 -- Loads configuration from config.lua in the same directory.
 --
 -- Usage: crane <srcX> <srcY> <dstX> <dstY>
@@ -348,7 +348,8 @@ end
 
 local function drop()
     print("Lower for drop")
-    lowerTo(TRANSPORT_HEIGHT)
+
+    lowerTo(cfg.LIFT_HEIGHT)
 
     print("Sticker RELEASE")
     stickerRelease()
