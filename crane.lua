@@ -1,4 +1,4 @@
--- crane.lua v1.4.0
+-- crane.lua v1.4.1
 
 ------------------------------------------------------------
 -- KONFIGURACJA CZASÓW
@@ -7,6 +7,12 @@
 local MAX_X = 15
 local MAX_Y = 15
 local LIFT_HEIGHT = 4    -- FIXED: was 5 (spec says 4 blocks)
+
+-- Przesuniecie home: po homingu dzwig jest fizycznie na pozycji
+-- (HOME_OFFSET_X, HOME_OFFSET_Y) w ukladzie wspolrzednych swiata.
+-- W Create bloki sa 1-indeksowane, wiec domyslnie offset = 1.
+local HOME_OFFSET_X = 1
+local HOME_OFFSET_Y = 1
 
 local RELAY_DELAY = 0.4            -- 8 tick
 local STICKER_TOGGLE_DELAY = 0.1   -- 2 tick
@@ -116,12 +122,6 @@ local function stickerRelease()
     pulse(stickerRelay) -- ON -> OFF (toggle latch)
 end
 
--- resetSticker: sticker 
-local function resetSticker()
-    pulse(stickerRelay) -- ON
-    shortTick()
-end
-
 ------------------------------------------------------------
 -- OSIE
 ------------------------------------------------------------
@@ -220,7 +220,6 @@ end
 local function home()
     print("Homing...")
 
-    stickerRelease()    -- FIXED: wylaczenie stickera (było resetSticker ktory nie zmienial stanu)
     resetRelays()
 
     raise()
@@ -233,8 +232,8 @@ local function home()
 
     waitUntilStopped()
 
-    currentX = 0
-    currentY = 0
+    currentX = HOME_OFFSET_X
+    currentY = HOME_OFFSET_Y
 
     resetRelays()
 end
@@ -290,12 +289,12 @@ gotoXY(srcX, srcY)
 pickup()
 
 print("Switch X -> Y")
-resetSticker()
+stickerGrab()
 
 moveY(dstY)
 
 print("Switch Y -> X")
-resetSticker()
+stickerGrab()
 
 moveX(dstX)
 
