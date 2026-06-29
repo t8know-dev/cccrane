@@ -1,4 +1,4 @@
--- crane.lua v1.5.0 — CC: Create crane controller
+-- crane.lua v1.5.1 — CC: Create crane controller
 -- Loads configuration from config.lua in the same directory.
 --
 -- Usage: crane <srcX> <srcY> <dstX> <dstY>
@@ -10,7 +10,7 @@
 --   was interrupted mid-operation (chunk unload / Ctrl+T), the next run will
 --   detect craneRunning=true and perform a full homing cycle.
 
-local cfg = dofile("config.lua")
+local cfg = dofile("cccrane/config.lua")
 
 local STATE_FILE = ".crane-state"
 local STATE_FILE_TMP = ".crane-state.tmp"
