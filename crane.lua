@@ -11,6 +11,7 @@ local LIFT_HEIGHT = 4    -- FIXED: was 5 (spec says 4 blocks)
 local RELAY_DELAY = 0.4            -- 8 tick
 local STICKER_TOGGLE_DELAY = 0.1   -- 2 tick
 local AXIS_SWITCH_DELAY = 0.4      -- 8 tick
+local MOVE_SETTLE_DELAY = 0.4      -- 8 tick, dodatkowy delay po zakonczeniu ruchu
 
 local gear = peripheral.wrap("Create_SequencedGearshift_0")
 
@@ -72,6 +73,8 @@ local function waitUntilStopped()
     while gear.isRunning() do
         sleep(1)
     end
+    -- dodatkowy delay po zatrzymaniu (domyslnie 8 tick)
+    sleep(MOVE_SETTLE_DELAY)
 end
 
 ------------------------------------------------------------
@@ -113,15 +116,10 @@ local function stickerRelease()
     pulse(stickerRelay) -- ON -> OFF (toggle latch)
 end
 
--- resetSticker: dwa pulse'y = netto brak zmiany stanu.
--- To pozwala "odswiezyc" zatrzask stickera bez puszczania bloku,
--- co jest wymagane po kazdym zatrzymaniu osi podczas transportu.
--- Gdyby byl tu pojedynczy pulse, sticker przelaczylby sie w OFF
--- i blok spadlby podczas jazdy.
+-- resetSticker: sticker 
 local function resetSticker()
-    pulse(stickerRelay) -- OFF
+    pulse(stickerRelay) -- ON
     shortTick()
-    pulse(stickerRelay) -- ON  (netto: stan niezmieniony)
 end
 
 ------------------------------------------------------------
@@ -146,16 +144,20 @@ end
 -- GEARS
 ------------------------------------------------------------
 
+local function runMove(distance, modifier)
+    if distance <= 0 then return end
+    gear.move(distance, modifier)
+    waitUntilStopped()
+end
+
 local function moveForward(distance)
     if distance <= 0 then return end
-    waitUntilStopped()
-    gear.move(distance, -1)
+    runMove(distance, -1)
 end
 
 local function moveBackward(distance)
     if distance <= 0 then return end
-    waitUntilStopped()
-    gear.move(distance, 1)
+    runMove(distance, 1)
 end
 
 ------------------------------------------------------------
@@ -201,18 +203,14 @@ local function lower()
     print("lower " .. LIFT_HEIGHT)
 
     enableLift()
-    waitUntilStopped()
-
-    gear.move(LIFT_HEIGHT, 1)
+    runMove(LIFT_HEIGHT, 1)
 end
 
 local function raise()
     print("raise " .. LIFT_HEIGHT)
 
     enableLift()
-    waitUntilStopped()
-
-    gear.move(LIFT_HEIGHT, -1)
+    runMove(LIFT_HEIGHT, -1)
 end
 
 ------------------------------------------------------------
