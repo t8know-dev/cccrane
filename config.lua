@@ -41,5 +41,5 @@ return {
     -- Axis polarity: set INVERSE_X or INVERSE_Y to true if the respective
     -- motor moves in the opposite direction from what the coordinate system expects.
     INVERSE_X = false,
-    INVERSE_Y = true,
+    INVERSE_Y = false,
 }

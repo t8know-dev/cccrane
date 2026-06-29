@@ -1,4 +1,4 @@
--- crane.lua v1.5.2 — CC: Create crane controller
+-- crane.lua v1.5.3 — CC: Create crane controller
 -- Loads configuration from config.lua in the same directory.
 --
 -- Usage: crane <srcX> <srcY> <dstX> <dstY>
@@ -295,7 +295,11 @@ local function home()
     raise()
 
     selectY()
-    moveBackward(cfg.MAX_Y)
+    if cfg.INVERSE_Y then
+        moveForward(cfg.MAX_Y)
+    else
+        moveBackward(cfg.MAX_Y)
+    end
 
     selectX()
     if cfg.INVERSE_X then
