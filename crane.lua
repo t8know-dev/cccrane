@@ -349,7 +349,7 @@ end
 local function drop()
     print("Lower for drop")
 
-    lowerTo(cfg.LIFT_HEIGHT - cfg.TRANSPORT_LOWER))
+    lowerTo(cfg.LIFT_HEIGHT)
 
     print("Sticker RELEASE")
     stickerRelease()
