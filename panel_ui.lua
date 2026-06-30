@@ -87,6 +87,7 @@ function PanelUI.create(opts)
     self:_buildSourcePanel()
     self:_buildDestPanel()
     self:_buildProgressBar()
+    self:_buildPreviewLine()
     self:_buildButtons()
     self:_buildStatusFrame()
     self:_buildLogArea()
@@ -105,24 +106,26 @@ end
 -- ── Layout Calculator ────────────────────────────────────────────
 
 function PanelUI:_calcLayout()
-    -- 1=header, 2=sep, 3-5=source+dest(3 rows: title, fields, preview),
-    -- 6=progress, 7=gap, 8=buttons(1 row), 9=gap, 10-11=status(2 rows),
-    -- 12=gap, 15+=log(5 lines)
+    -- 1=header, 2=sep, 3-4=source+dest(2 rows: title, fields),
+    -- 5=progress, 6=preview(standalone), 7=gap,
+    -- 9=buttons(1 row), 10=gap, 11-12=status(2 rows),
+    -- 13=gap, 15+=log(4 lines)
     self._L = {
         HEADER    = 1,
         SEP1      = 2,
         INPUTS    = 3,     -- Source/Dest frame start
-        INPUT_END = 5,     -- frame end (3 rows)
-        PROGRESS  = 6,
+        INPUT_END = 4,     -- frame end (2 rows)
+        PROGRESS  = 5,
+        PREVIEW   = 6,     -- standalone crane preview line
         GAP_BTN   = 7,
-        BUTTONS   = 8,     -- 1 row
-        GAP_BTN2  = 9,
-        STATUS    = 10,
-        STATUS_END= 11,
-        GAP_LOG   = 12,
+        BUTTONS   = 9,     -- 1 row
+        GAP_BTN2  = 10,
+        STATUS    = 11,
+        STATUS_END= 12,
+        GAP_LOG   = 13,
         LOG_START = 15,
     }
-    self._logRows = 5  -- fixed 5 log lines (frame = 6 rows)
+    self._logRows = 4  -- fixed 4 log lines (frame = 5 rows)
 end
 
 -- ── Widget Builders ──────────────────────────────────────────────
@@ -190,7 +193,7 @@ function PanelUI:_buildSourcePanel()
     local W = self._termW
 
     local panW = math.floor((W - 3) / 2)  -- left half minus gap
-    local height = 3                      -- title, fields, preview
+    local height = 2                      -- title + fields
 
     self._sourceFrame = a:createFrame({
         x = 1, y = L.INPUTS,
@@ -253,17 +256,6 @@ function PanelUI:_buildSourcePanel()
     })
     r:addChild(tbSrcY)
 
-    -- Current position preview below the fields
-    self._srcPreview = a:createLabel({
-        x = 2, y = L.INPUTS + 2,
-        width = panW - 4,
-        height = 1,
-        text = "   crn: (—, —)",
-        bg = C.bgPanel,
-        fg = C.fgCyan,
-    })
-    r:addChild(self._srcPreview)
-
     self._fields = {
         src_x = { tb = tbSrcX, label = lblX },
         src_y = { tb = tbSrcY, label = lblY },
@@ -277,7 +269,7 @@ function PanelUI:_buildDestPanel()
 
     local panW = math.floor((W - 3) / 2)
     local panX = W - panW
-    local height = 3                      -- title, fields, preview
+    local height = 2                      -- title + fields
 
     self._destFrame = a:createFrame({
         x = panX, y = L.INPUTS,
@@ -340,17 +332,6 @@ function PanelUI:_buildDestPanel()
     })
     r:addChild(tbDstY)
 
-    -- Current position preview below the fields
-    self._dstPreview = a:createLabel({
-        x = panX + 2, y = L.INPUTS + 2,
-        width = panW - 4,
-        height = 1,
-        text = "   crn: (—, —)",
-        bg = C.bgPanel,
-        fg = C.fgCyan,
-    })
-    r:addChild(self._dstPreview)
-
     self._fields.dst_x = { tb = tbDstX, label = lblX }
     self._fields.dst_y = { tb = tbDstY, label = lblY }
 end
@@ -376,6 +357,21 @@ function PanelUI:_buildProgressBar()
         border = { color = C.border },
     })
     r:addChild(self._progressBar)
+end
+
+function PanelUI:_buildPreviewLine()
+    local a, r = self._app, self._root
+    local W = self._termW
+    local L = self._L
+    self._previewLabel = a:createLabel({
+        x = 1, y = L.PREVIEW,
+        width = W - 1,
+        height = 1,
+        text = "   crane: (—, —)",
+        bg = C.bgDark,
+        fg = C.fgCyan,
+    })
+    r:addChild(self._previewLabel)
 end
 
 function PanelUI:_buildButtons()
@@ -864,9 +860,8 @@ end
 
 function PanelUI:_updatePreview()
     local x, y = self._state.cranePos[1], self._state.cranePos[2]
-    local text = string.format("crn: (%d,%d)", x, y)
-    if self._srcPreview then self._srcPreview:setText(text) end
-    if self._dstPreview then self._dstPreview:setText(text) end
+    local text = string.format("   crane: (%d, %d)", x, y)
+    if self._previewLabel then self._previewLabel:setText(text) end
 end
 
 function PanelUI:_updateProgress()
