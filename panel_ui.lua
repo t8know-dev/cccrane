@@ -105,23 +105,24 @@ end
 -- ── Layout Calculator ────────────────────────────────────────────
 
 function PanelUI:_calcLayout()
-    -- 1=header, 2=sep, 3-5=source+dest(3 rows w/ padding),
-    -- 6=progress, 7=gap, 8-10=buttons(3 rows tall),
-    -- 11=gap, 12-13=status(2 rows), 14+=log
+    -- 1=header, 2=sep, 3-5=source+dest(3 rows: title, fields, preview),
+    -- 6=progress, 7=gap, 8=buttons(1 row), 9=gap, 10-11=status(2 rows),
+    -- 12=gap, 15+=log(5 lines)
     self._L = {
         HEADER    = 1,
         SEP1      = 2,
-        INPUTS    = 3,     -- Source/Dest frame start (3 rows: title + pad + fields)
-        INPUT_END = 5,
+        INPUTS    = 3,     -- Source/Dest frame start
+        INPUT_END = 5,     -- frame end (3 rows)
         PROGRESS  = 6,
         GAP_BTN   = 7,
-        BUTTONS   = 8,     -- 3 rows tall (rows 8,9,10)
-        GAP_BTN2  = 11,
-        STATUS    = 12,
-        STATUS_END= 13,
-        LOG_START = 14,
+        BUTTONS   = 8,     -- 1 row
+        GAP_BTN2  = 9,
+        STATUS    = 10,
+        STATUS_END= 11,
+        GAP_LOG   = 12,
+        LOG_START = 15,
     }
-    self._logRows = 6  -- fixed 6 log lines (frame = 7 rows)
+    self._logRows = 5  -- fixed 5 log lines (frame = 6 rows)
 end
 
 -- ── Widget Builders ──────────────────────────────────────────────
@@ -189,7 +190,7 @@ function PanelUI:_buildSourcePanel()
     local W = self._termW
 
     local panW = math.floor((W - 3) / 2)  -- left half minus gap
-    local height = 3                      -- 1 title + 1 pad + 1 fields
+    local height = 3                      -- title, fields, preview
 
     self._sourceFrame = a:createFrame({
         x = 1, y = L.INPUTS,
@@ -210,9 +211,9 @@ function PanelUI:_buildSourcePanel()
     })
     r:addChild(self._sourceTitle)
 
-    -- X field (padded down by 1)
+    -- X field
     local lblX = a:createLabel({
-        x = 2, y = L.INPUTS + 2,
+        x = 2, y = L.INPUTS + 1,
         width = 2,
         height = 1,
         text = "X:",
@@ -222,7 +223,7 @@ function PanelUI:_buildSourcePanel()
     r:addChild(lblX)
 
     local tbSrcX = a:createTextBox({
-        x = 4, y = L.INPUTS + 2,
+        x = 4, y = L.INPUTS + 1,
         width = 5, height = 1,
         numericOnly = true, maxLength = 5,
         placeholder = "     ", placeholderColor = C.border,
@@ -231,9 +232,9 @@ function PanelUI:_buildSourcePanel()
     })
     r:addChild(tbSrcX)
 
-    -- Y field (padded down by 1)
+    -- Y field
     local lblY = a:createLabel({
-        x = 12, y = L.INPUTS + 2,
+        x = 12, y = L.INPUTS + 1,
         width = 2,
         height = 1,
         text = "Y:",
@@ -243,7 +244,7 @@ function PanelUI:_buildSourcePanel()
     r:addChild(lblY)
 
     local tbSrcY = a:createTextBox({
-        x = 14, y = L.INPUTS + 2,
+        x = 14, y = L.INPUTS + 1,
         width = 5, height = 1,
         numericOnly = true, maxLength = 5,
         placeholder = "     ", placeholderColor = C.border,
@@ -252,12 +253,12 @@ function PanelUI:_buildSourcePanel()
     })
     r:addChild(tbSrcY)
 
-    -- Current position preview (padded down by 1)
+    -- Current position preview below the fields
     self._srcPreview = a:createLabel({
-        x = 22, y = L.INPUTS + 2,
-        width = panW - 23,
+        x = 2, y = L.INPUTS + 2,
+        width = panW - 4,
         height = 1,
-        text = "crn: (—, —)",
+        text = "   crn: (—, —)",
         bg = C.bgPanel,
         fg = C.fgCyan,
     })
@@ -276,7 +277,7 @@ function PanelUI:_buildDestPanel()
 
     local panW = math.floor((W - 3) / 2)
     local panX = W - panW
-    local height = 3                      -- 1 title + 1 pad + 1 fields
+    local height = 3                      -- title, fields, preview
 
     self._destFrame = a:createFrame({
         x = panX, y = L.INPUTS,
@@ -297,9 +298,9 @@ function PanelUI:_buildDestPanel()
     })
     r:addChild(self._destTitle)
 
-    -- X field (padded down by 1)
+    -- X field
     local lblX = a:createLabel({
-        x = panX + 2, y = L.INPUTS + 2,
+        x = panX + 2, y = L.INPUTS + 1,
         width = 2,
         height = 1,
         text = "X:",
@@ -309,7 +310,7 @@ function PanelUI:_buildDestPanel()
     r:addChild(lblX)
 
     local tbDstX = a:createTextBox({
-        x = panX + 4, y = L.INPUTS + 2,
+        x = panX + 4, y = L.INPUTS + 1,
         width = 5, height = 1,
         numericOnly = true, maxLength = 5,
         placeholder = "     ", placeholderColor = C.border,
@@ -318,9 +319,9 @@ function PanelUI:_buildDestPanel()
     })
     r:addChild(tbDstX)
 
-    -- Y field (padded down by 1)
+    -- Y field
     local lblY = a:createLabel({
-        x = panX + 12, y = L.INPUTS + 2,
+        x = panX + 12, y = L.INPUTS + 1,
         width = 2,
         height = 1,
         text = "Y:",
@@ -330,7 +331,7 @@ function PanelUI:_buildDestPanel()
     r:addChild(lblY)
 
     local tbDstY = a:createTextBox({
-        x = panX + 14, y = L.INPUTS + 2,
+        x = panX + 14, y = L.INPUTS + 1,
         width = 5, height = 1,
         numericOnly = true, maxLength = 5,
         placeholder = "     ", placeholderColor = C.border,
@@ -339,12 +340,12 @@ function PanelUI:_buildDestPanel()
     })
     r:addChild(tbDstY)
 
-    -- Current position preview (padded down by 1)
+    -- Current position preview below the fields
     self._dstPreview = a:createLabel({
-        x = panX + 22, y = L.INPUTS + 2,
-        width = panW - 23,
+        x = panX + 2, y = L.INPUTS + 2,
+        width = panW - 4,
         height = 1,
-        text = "crn: (—, —)",
+        text = "   crn: (—, —)",
         bg = C.bgPanel,
         fg = C.fgCyan,
     })
@@ -387,8 +388,8 @@ function PanelUI:_buildButtons()
     -- RUN
     local runBtn = a:createButton({
         x = 2, y = L.BUTTONS,
-        width = 7, height = 3,
-        label = "\n  RUN  ",
+        width = 7, height = 1,
+        label = "  RUN  ",
         bg = C.bgBtn, fg = C.fgWhite,
         border = { color = C.border },
     })
@@ -400,8 +401,8 @@ function PanelUI:_buildButtons()
     -- GOTO
     local gotoBtn = a:createButton({
         x = 10, y = L.BUTTONS,
-        width = 8, height = 3,
-        label = "\n  GOTO  ",
+        width = 8, height = 1,
+        label = "  GOTO  ",
         bg = C.bgBtn, fg = C.fgWhite,
         border = { color = C.border },
     })
@@ -413,8 +414,8 @@ function PanelUI:_buildButtons()
     -- HOME
     local homeBtn = a:createButton({
         x = 19, y = L.BUTTONS,
-        width = 8, height = 3,
-        label = "\n  HOME  ",
+        width = 8, height = 1,
+        label = "  HOME  ",
         bg = C.bgBtn, fg = C.fgWhite,
         border = { color = C.border },
     })
@@ -426,8 +427,8 @@ function PanelUI:_buildButtons()
     -- EMRG STOP (right aligned, wider, red)
     local emrgBtn = a:createButton({
         x = self._termW - 12, y = L.BUTTONS,
-        width = 11, height = 3,
-        label = "\n  EMRG  ",
+        width = 11, height = 1,
+        label = "  EMRG  ",
         bg = C.bgEmrg, fg = C.fgWhite,
         border = { color = C.fgOrange },
     })
@@ -790,7 +791,7 @@ end
 function PanelUI:_redrawHeader()
     local connected = self._state.connected and self._state.registered
     self._headerDot.fg = connected and C.ok or C.fgRed
-    self._headerDot:setText("  @")
+    self._headerDot:setText(" @ ")
     self._headerStatus:setText(connected and "CONNECTED" or "DISCONNECTED")
     self._headerStatus.fg = connected and C.ok or C.fgGray
     self._headerId:setText(connected and ("[" .. self._state.craneId .. "]") or "")
