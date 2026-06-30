@@ -87,7 +87,6 @@ function PanelUI.create(opts)
     self:_buildSourcePanel()
     self:_buildDestPanel()
     self:_buildProgressBar()
-    self:_buildPreviewLine()
     self:_buildButtons()
     self:_buildStatusFrame()
     self:_buildLogArea()
@@ -106,24 +105,24 @@ end
 -- ── Layout Calculator ────────────────────────────────────────────
 
 function PanelUI:_calcLayout()
-    -- 1=header, 2=sep, 3-4=source+dest(2 rows: title, fields),
-    -- 5=progress, 6=preview(standalone), 7=gap,
-    -- 9=buttons(1 row), 10=gap, 11-12=status(2 rows),
-    -- 13=gap, 15+=log(4 lines)
+    -- 1=header, 2=sep, 3-4=source(2 rows), 4-5=dest(2 rows),
+    -- 6=progress, 7=gap,
+    -- 10=buttons(1 row), 11=gap, 12-13=status(2 rows),
+    -- 14=gap, 16+=log(4 lines)
     self._L = {
         HEADER    = 1,
         SEP1      = 2,
-        INPUTS    = 3,     -- Source/Dest frame start
-        INPUT_END = 4,     -- frame end (2 rows)
-        PROGRESS  = 5,
-        PREVIEW   = 6,     -- standalone crane preview line
-        GAP_BTN   = 7,
-        BUTTONS   = 9,     -- 1 row
-        GAP_BTN2  = 10,
-        STATUS    = 11,
-        STATUS_END= 12,
-        GAP_LOG   = 13,
-        LOG_START = 15,
+        INPUTS    = 3,     -- Source frame start (height=2, rows 3-4)
+        DEST_INPUT= 4,     -- Dest frame start (height=2, rows 4-5)
+        INPUT_END = 5,     -- bottom of frames
+        PROGRESS  = 6,
+        GAP_BTN   = 8,
+        BUTTONS   = 10,    -- 1 row
+        GAP_BTN2  = 11,
+        STATUS    = 12,
+        STATUS_END= 13,
+        GAP_LOG   = 14,
+        LOG_START = 16,
     }
     self._logRows = 4  -- fixed 4 log lines (frame = 5 rows)
 end
@@ -272,7 +271,7 @@ function PanelUI:_buildDestPanel()
     local height = 2                      -- title + fields
 
     self._destFrame = a:createFrame({
-        x = panX, y = L.INPUTS,
+        x = panX, y = L.DEST_INPUT,
         width = panW, height = height,
         bg = C.bgPanel,
         border = { color = C.border },
@@ -281,10 +280,7 @@ function PanelUI:_buildDestPanel()
 
     -- Section title
     self._destTitle = a:createLabel({
-        x = panX + 2, y = L.INPUTS,
-        width = panW - 5,
-        height = 1,
-        text = "DEST (Drop)",
+        x = panX + 2, y = L.DEST_INPUT,
         bg = C.bgPanel,
         fg = C.fgYellow,
     })
@@ -292,7 +288,7 @@ function PanelUI:_buildDestPanel()
 
     -- X field
     local lblX = a:createLabel({
-        x = panX + 2, y = L.INPUTS + 1,
+        x = panX + 2, y = L.DEST_INPUT + 1,
         width = 2,
         height = 1,
         text = "X:",
@@ -302,9 +298,7 @@ function PanelUI:_buildDestPanel()
     r:addChild(lblX)
 
     local tbDstX = a:createTextBox({
-        x = panX + 4, y = L.INPUTS + 1,
-        width = 5, height = 1,
-        numericOnly = true, maxLength = 5,
+        x = panX + 4, y = L.DEST_INPUT + 1,
         placeholder = "     ", placeholderColor = C.border,
         bg = C.bgDark, fg = C.fgWhite,
         border = { color = C.border },
@@ -313,19 +307,14 @@ function PanelUI:_buildDestPanel()
 
     -- Y field
     local lblY = a:createLabel({
-        x = panX + 12, y = L.INPUTS + 1,
-        width = 2,
-        height = 1,
-        text = "Y:",
+        x = panX + 12, y = L.DEST_INPUT + 1,
         bg = C.bgPanel,
         fg = C.fgLight,
     })
     r:addChild(lblY)
 
     local tbDstY = a:createTextBox({
-        x = panX + 14, y = L.INPUTS + 1,
-        width = 5, height = 1,
-        numericOnly = true, maxLength = 5,
+        x = panX + 14, y = L.DEST_INPUT + 1,
         placeholder = "     ", placeholderColor = C.border,
         bg = C.bgDark, fg = C.fgWhite,
         border = { color = C.border },
@@ -357,21 +346,6 @@ function PanelUI:_buildProgressBar()
         border = { color = C.border },
     })
     r:addChild(self._progressBar)
-end
-
-function PanelUI:_buildPreviewLine()
-    local a, r = self._app, self._root
-    local W = self._termW
-    local L = self._L
-    self._previewLabel = a:createLabel({
-        x = 1, y = L.PREVIEW,
-        width = W - 1,
-        height = 1,
-        text = "   crane: (—, —)",
-        bg = C.bgDark,
-        fg = C.fgCyan,
-    })
-    r:addChild(self._previewLabel)
 end
 
 function PanelUI:_buildButtons()
@@ -423,7 +397,7 @@ function PanelUI:_buildButtons()
     -- EMRG STOP (right aligned, wider, red)
     local emrgBtn = a:createButton({
         x = self._termW - 12, y = L.BUTTONS,
-        width = 11, height = 1,
+        width = 10, height = 1,
         label = "EMRG",
         bg = C.bgEmrg, fg = C.fgWhite,
         border = { color = C.fgOrange },
@@ -725,7 +699,6 @@ function PanelUI:setCraneStatus(opts)
     end
     if opts.errorMsg  ~= nil then self._state.craneErrorMsg = opts.errorMsg end
     self:_updateStatus()
-    self:_updatePreview()
     self:_updateProgress()
 end
 
@@ -856,12 +829,6 @@ function PanelUI:_updateStatus()
     local grid = string.format("%dx%d", s.gridMaxX, s.gridMaxY)
     local line = status .. "  |  " .. pos .. "  |  " .. sticker .. "  |  " .. grid
     sl:setText(line)
-end
-
-function PanelUI:_updatePreview()
-    local x, y = self._state.cranePos[1], self._state.cranePos[2]
-    local text = string.format("   crane: (%d, %d)", x, y)
-    if self._previewLabel then self._previewLabel:setText(text) end
 end
 
 function PanelUI:_updateProgress()
