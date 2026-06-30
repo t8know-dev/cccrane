@@ -10,12 +10,12 @@
 --   crane-lib.lua            (crane hardware control library)
 --   ccryptolib/              (crypto primitives for ECNet2)
 
-local ecnet2 = require "ecnet2"
-local random = require "ccryptolib.random"
+local ecnet2 = require "cccrane.ecnet2"
+local random = require "cccrane.ccryptolib.ccryptolib.random"
 random.initWithTiming()
 
-local rc = dofile("cccrane/crane-remote-config.lua")
-local crane = dofile("cccrane/crane-lib.lua")
+local rc = dofile("/cccrane/crane-remote-config.lua")
+local crane = dofile("/cccrane/crane-lib.lua")
 
 ecnet2.open("top")
 

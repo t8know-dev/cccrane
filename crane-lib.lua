@@ -3,7 +3,7 @@
 -- Loads configuration from config.lua in the same directory.
 --
 -- Usage:
---   local crane = dofile("cccrane/crane-lib.lua")
+--   local crane = dofile("/cccrane/crane-lib.lua")
 --   crane.init()
 --   crane.gotoXY(10, 5)
 --   crane.pickup()
@@ -16,7 +16,7 @@
 --   was interrupted mid-operation (chunk unload / Ctrl+T), the next run will
 --   detect craneRunning=true and perform a full homing cycle.
 
-local cfg = dofile("cccrane/config.lua")
+local cfg = dofile("/cccrane/config.lua")
 
 local STATE_FILE = ".crane-state"
 local STATE_FILE_TMP = ".crane-state.tmp"

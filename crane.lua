@@ -3,7 +3,7 @@
 --
 -- Usage: crane <srcX> <srcY> <dstX> <dstY>
 
-local crane = dofile("cccrane/crane-lib.lua")
+local crane = dofile("/cccrane/crane-lib.lua")
 local cfg = crane.config
 
 ------------------------------------------------------------

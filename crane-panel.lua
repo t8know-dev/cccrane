@@ -9,8 +9,8 @@
 -- The panel's ECNet2 address is printed on startup — copy it to
 -- crane-remote-config.lua on the crane computer.
 
-local ecnet2 = require "ecnet2"
-local random = require "ccryptolib.random"
+local ecnet2 = require "cccrane.ecnet2"
+local random = require "cccrane.ccryptolib.ccryptolib.random"
 random.initWithTiming()
 
 ------------------------------------------------------------
