@@ -116,6 +116,7 @@ end
 local function executeCommand(command, params, seq)
     busy = true
     crane.clearStop()
+    crane.markRunning()
     sendStatus()
 
     local ok, err = pcall(function()
@@ -158,6 +159,7 @@ local function executeCommand(command, params, seq)
     end
 
     sendStatus()
+    crane.markIdle()
 end
 
 ------------------------------------------------------------
@@ -312,6 +314,7 @@ end
 
 print("Crane client starting...")
 crane.init()
+crane.markIdle()
 
 print("Starting connection loop...")
 

@@ -379,6 +379,18 @@ function craneDone()
     print("Done.")
 end
 
+--- Explicitly mark the crane as running (protects against crash during command).
+function craneMarkRunning()
+    state.craneRunning = true
+    saveState()
+end
+
+--- Explicitly mark the crane as idle (clean shutdown between commands).
+function craneMarkIdle()
+    state.craneRunning = false
+    saveState()
+end
+
 --- Reset the emergency-stop flag (called after a new command is issued).
 function craneClearStop()
     EMERGENCY_STOP = false
@@ -415,6 +427,9 @@ return {
     emergencyStop = craneEmergencyStop,
     isStopped = craneIsStopped,
     getState = craneGetState,
+
+    markRunning = craneMarkRunning,
+    markIdle = craneMarkIdle,
 
     -- Movement
     gotoXY = gotoXY,
