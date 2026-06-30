@@ -104,7 +104,7 @@ end
 -- ── Layout Calculator ────────────────────────────────────────────
 
 function PanelUI:_calcLayout()
-    -- 1=header, 2=sep, 3-4=source+dest(2 rows: title, fields),
+    -- 1=header, 2=sep, 3-5=source+dest(3 rows: title, fields, pad),
     -- 6=buttons(1 row), 7=gap, 8-9=status(2 rows),
     -- 10=gap, 12+=log(6 lines)
     self._L = {
@@ -120,7 +120,7 @@ function PanelUI:_calcLayout()
         GAP_LOG   = 11,
         LOG_START = 12,
     }
-    self._logRows = 6  -- fixed 6 log lines (frame = 7 rows)
+    self._logRows = 5  -- fixed 5 log lines (frame = 7 rows)
 end
 
 -- ── Widget Builders ──────────────────────────────────────────────
@@ -188,7 +188,7 @@ function PanelUI:_buildSourcePanel()
     local W = self._termW
 
     local panW = math.floor((W - 3) / 2)  -- left half minus gap
-    local height = 2                      -- title + fields
+    local height = 3                      -- title + fields + pad
 
     self._sourceFrame = a:createFrame({
         x = 1, y = L.INPUTS,
@@ -264,7 +264,7 @@ function PanelUI:_buildDestPanel()
 
     local panW = math.floor((W - 3) / 2)
     local panX = W - panW
-    local height = 2                      -- title + fields
+    local height = 3                      -- title + fields + pad
 
     self._destFrame = a:createFrame({
         x = panX, y = L.INPUTS,
