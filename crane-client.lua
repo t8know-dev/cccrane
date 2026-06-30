@@ -173,28 +173,54 @@ end
 -- during a crane operation without this router thread.
 ------------------------------------------------------------
 
+-- How often msgRouter sends STATUS to the panel while the crane is busy.
+local BUSY_STATUS_INTERVAL = 3
+
 local function msgRouter()
+    local busyTimer = nil
     while true do
-        local event, p1, p2, p3, p4, p5 = os.pullEvent("ecnet2_message")
-        if conn and p1 == conn.id then
-            -- Any message on this connection proves the link is alive
-            lastMessageTime = os.epoch("utc")
-            if p3 and p3.type == "request" and p3.body
-               and p3.body.message_type == "COMMAND"
-               and p3.body.command == "EMERGENCY_STOP" then
-                -- Handle emergency stop immediately, even during a blocking op
-                crane.emergencyStop()
-                pcall(conn.send, conn, {
-                    type = "response",
-                    body = {
-                        message_type = "ACK",
-                        status = "ok",
-                        command_seq = p3.body.seq,
-                    },
-                })
-            else
-                -- Re-queue for the main loop under a different event name
-                os.queueEvent("crane_msg", p1, p2, p3, p4, p5)
+        local event, p1, p2, p3, p4, p5 = os.pullEvent()
+
+        if event == "ecnet2_message" then
+            if conn and p1 == conn.id then
+                -- Any message on this connection proves the link is alive
+                lastMessageTime = os.epoch("utc")
+
+                if p3 and p3.type == "request" and p3.body
+                   and p3.body.message_type == "COMMAND"
+                   and p3.body.command == "EMERGENCY_STOP" then
+                    -- Handle emergency stop immediately, even during a blocking op
+                    crane.emergencyStop()
+                    pcall(conn.send, conn, {
+                        type = "response",
+                        body = {
+                            message_type = "ACK",
+                            status = "ok",
+                            command_seq = p3.body.seq,
+                        },
+                    })
+                else
+                    -- Re-queue for the main loop under a different event name
+                    os.queueEvent("crane_msg", p1, p2, p3, p4, p5)
+                end
+            end
+
+        elseif event == "timer" and p1 == busyTimer then
+            busyTimer = nil
+        end
+
+        -- If the crane is busy, send periodic STATUS to keep the panel's
+        -- watchdog alive, and start a timer for the next one.
+        if busy and conn then
+            if not busyTimer then
+                sendStatus()
+                busyTimer = os.startTimer(BUSY_STATUS_INTERVAL)
+            end
+        else
+            -- Not busy — cancel any pending timer
+            if busyTimer then
+                os.cancelTimer(busyTimer)
+                busyTimer = nil
             end
         end
     end

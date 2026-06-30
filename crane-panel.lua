@@ -254,19 +254,16 @@ local function drawButtons()
         local label = " " .. b.label .. " "
         local bg, fg
 
-        if not panelState.registered or b.action == "EMERGENCY_STOP" then
-            -- EMERGENCY_STOP is always enabled if connected
-            if b.action == "EMERGENCY_STOP" and panelState.registered then
-                bg = colors.orange
-                fg = colors.white
-            elseif b.action == "EMERGENCY_STOP" then
-                bg = colors.gray
-                fg = colors.gray
-            else
-                bg = colors.gray
-                fg = colors.gray
-            end
+        if not panelState.registered then
+            -- Not yet connected — all buttons gray
+            bg = colors.gray
+            fg = colors.gray
+        elseif panelState.pending and b.action ~= "EMERGENCY_STOP" then
+            -- Command in flight — only EMERGENCY_STOP is usable
+            bg = colors.gray
+            fg = colors.gray
         elseif b.action == "EMERGENCY_STOP" then
+            -- Emergency stop always orange when registered
             bg = colors.orange
             fg = colors.white
         else
@@ -292,6 +289,8 @@ local function drawStatus()
         status = "Status: ---"
     elseif panelState.craneError then
         status = "Status: ERROR (" .. panelState.craneErrorMsg .. ")"
+    elseif panelState.pending then
+        status = "Status: PENDING (cmd #" .. panelState.pendingSeq .. ")"
     elseif panelState.craneBusy then
         status = "Status: BUSY"
     else
@@ -485,6 +484,24 @@ end
 --- @param mx number click x
 --- @param my number click y
 local function handleTouch(mx, my)
+    -- Block all interaction while a command is in flight (EMERGENCY_STOP
+    -- is handled separately below).
+    if panelState.pending then
+        -- Only allow clicking EMERGENCY_STOP
+        if my == L.BUTTONS and panelState.registered then
+            for _, b in ipairs(BUTTON_DEFS) do
+                if b.action == "EMERGENCY_STOP" then
+                    local btnW = #b.label + 2
+                    if mx >= b.col and mx < b.col + btnW then
+                        sendCommand("EMERGENCY_STOP")
+                        return
+                    end
+                end
+            end
+        end
+        return
+    end
+
     -- Check input fields
     for key, f in pairs(FIELDS) do
         if hitRect(mx, my, f.x - 1, f.y, f.width + 2, 1) then
@@ -506,7 +523,7 @@ local function handleTouch(mx, my)
         for _, b in ipairs(BUTTON_DEFS) do
             local btnW = #b.label + 2  -- " LABEL " with spaces
             if mx >= b.col and mx < b.col + btnW then
-                -- If connected, dispatch action
+                -- Dispatch action
                 if b.action == "GOTO" then
                     local x, y = getSrcCoords()
                     if x and y then
@@ -534,7 +551,7 @@ end
 --- @param char string typed character
 local function handleChar(char)
     local f = panelState.activeField
-    if not f then return end
+    if not f or panelState.pending then return end
     local field = FIELDS[f]
     if not field then return end
 
@@ -549,7 +566,7 @@ end
 --- @param keyCode number
 local function handleKey(keyCode)
     local f = panelState.activeField
-    if not f then return end
+    if not f or panelState.pending then return end
     local field = FIELDS[f]
     if not field then return end
 
