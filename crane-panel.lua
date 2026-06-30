@@ -1,4 +1,4 @@
--- crane-panel.lua — v3 Crane control panel (ECNet2 server)
+-- crane-panel.lua — v4 Crane control panel (ECNet2 server)
 --
 -- Full-screen terminal GUI for remotely controlling a crane via ECNet2.
 -- Displays source/destination position fields, command buttons, crane status,
@@ -69,6 +69,7 @@ local BUTTON_DEFS = {
     { label = "DROP",  action = "DROP",  col = 22 },
     { label = "HOME",  action = "HOME",  col = 30 },
     { label = "EMRG",  action = "EMERGENCY_STOP", col = 39 },
+    { label = "RUN",   action = "PICKANDDROP", col = 47 },
 }
 
 ------------------------------------------------------------
@@ -536,6 +537,15 @@ local function handleTouch(mx, my)
                     sendCommand("PICKUP")
                 elseif b.action == "DROP" then
                     sendCommand("DROP")
+                elseif b.action == "PICKANDDROP" then
+                    local sx, sy = getSrcCoords()
+                    local dx, dy = getDstCoords()
+                    if sx and sy and dx and dy then
+                        sendCommand("PICKANDDROP", { src = { x = sx, y = sy }, dst = { x = dx, y = dy } })
+                    else
+                        addLog("Set source AND destination coordinates first", colors.red)
+                        quickRedraw()
+                    end
                 elseif b.action == "HOME" then
                     sendCommand("HOME")
                 elseif b.action == "EMERGENCY_STOP" then
@@ -615,7 +625,7 @@ local function mainLoop()
             handleChar(id)
 
         elseif event == "key" then
-            handleKey(p2)
+            handleKey(id)
 
         elseif event == "ecnet2_request" and id == listener.id then
             if panelState.connection then

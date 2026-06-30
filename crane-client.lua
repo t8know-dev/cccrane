@@ -128,6 +128,11 @@ local function executeCommand(command, params, seq)
             crane.drop()
         elseif command == "HOME" then
             crane.home()
+        elseif command == "PICKANDDROP" then
+            crane.gotoXY(params.src.x, params.src.y)
+            crane.pickup()
+            crane.gotoXY(params.dst.x, params.dst.y)
+            crane.drop()
         elseif command == "STATUS_QUERY" then
             -- nothing to do, status sent below
         else
