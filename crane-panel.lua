@@ -1,8 +1,8 @@
--- crane-panel.lua — v6 Crane control panel (ECNet2 server)
+-- crane-panel.lua — v7 Crane control panel (ECNet2 server)
 --
 -- Full-screen terminal GUI for remotely controlling a crane via ECNet2.
 -- Displays source/destination position fields, command buttons, crane status,
--- and an operation log.
+-- and an operation log. Uses PixelUI for all rendering.
 --
 -- Usage: crane-panel
 --
@@ -13,62 +13,7 @@ local ecnet2 = require "ecnet2"
 local random = require "ccryptolib.random"
 random.initWithTiming()
 
-------------------------------------------------------------
--- CONSTANTS
-------------------------------------------------------------
-
-local TERM_W, TERM_H = term.getSize()
-
--- Layout rows (1-indexed)
-local L = {
-    HEADER     = 1,
-    SEP1       = 2,
-    LABEL      = 3,
-    INPUT_SRCX = 4,
-    INPUT_SRCY = 5,
-    INPUT_DSTX = 6,
-    INPUT_DSTY = 7,
-    GAP1       = 8,
-    BUTTONS    = 9,
-    GAP2       = 10,
-    STATUS     = 11,
-    SEP2       = 12,
-    LOG_START  = 13,
-}
-
-local LOG_HEIGHT = TERM_H - L.LOG_START  -- remaining rows
-
-local SOURCE_LABEL = "SOURCE (Pickup)"
-local DEST_LABEL   = "DEST (Drop)"
-local EMPTY_FIELD  = "     "
-
--- Input field definitions
-local FIELDS = {
-    src_x = {
-        label = "X", x = 5,  y = L.INPUT_SRCX,
-        x_label = 3, width = 5, value = "",
-    },
-    src_y = {
-        label = "Y", x = 5,  y = L.INPUT_SRCY,
-        x_label = 3, width = 5, value = "",
-    },
-    dst_x = {
-        label = "X", x = 30, y = L.INPUT_DSTX,
-        x_label = 28, width = 5, value = "",
-    },
-    dst_y = {
-        label = "Y", x = 30, y = L.INPUT_DSTY,
-        x_label = 28, width = 5, value = "",
-    },
-}
-
--- Button definitions (label, column start, action name)
-local BUTTON_DEFS = {
-    { label = "RUN",   action = "PICKANDDROP",    col = 3 },
-    { label = "GOTO",  action = "GOTO",           col = 9 },
-    { label = "HOME",  action = "HOME",           col = 16 },
-    { label = "EMRG",  action = "EMERGENCY_STOP", col = 25 },
-}
+local panelUI = require("panel_ui")
 
 ------------------------------------------------------------
 -- STATE
@@ -85,11 +30,6 @@ local panelState = {
     craneBusy   = false,
     craneError  = false,
     craneErrorMsg = "",
-
-    activeField = nil,       -- which field is being edited ("src_x", ...)
-
-    -- Operation log: list of { text = str, color = int }
-    logLines    = {},
 
     -- Pending command tracking
     pending         = false,  -- true while waiting for ACK
@@ -129,19 +69,6 @@ local listener = proto:listen()
 -- HELPERS
 ------------------------------------------------------------
 
---- Add a line to the operation log.
---- @param text string
---- @param color number|nil optional text color (default colors.lightGray)
-local function addLog(text, color)
-    table.insert(panelState.logLines, {
-        text = text,
-        color = color or colors.lightGray,
-    })
-    if #panelState.logLines > 50 then
-        table.remove(panelState.logLines, 1)
-    end
-end
-
 --- Format a timestamp for log lines.
 local function timestamp()
     local t = os.time()
@@ -149,226 +76,6 @@ local function timestamp()
     local m = math.floor(t / 60) % 60
     local s = t % 60
     return string.format("[%02d:%02d:%02d]", h, m, s)
-end
-
---- Get the current source and destination coordinate values as numbers.
-local function getSrcCoords()
-    local x = tonumber(FIELDS.src_x.value)
-    local y = tonumber(FIELDS.src_y.value)
-    return x, y
-end
-
-local function getDstCoords()
-    local x = tonumber(FIELDS.dst_x.value)
-    local y = tonumber(FIELDS.dst_y.value)
-    return x, y
-end
-
-------------------------------------------------------------
--- RENDERING
-------------------------------------------------------------
-
---- Draw the header bar with title and connection status.
-local function drawHeader()
-    term.setCursorPos(1, L.HEADER)
-    term.setTextColor(colors.white)
-
-    -- Connection status dot
-    if panelState.connected then
-        term.setBackgroundColor(colors.green)
-    else
-        term.setBackgroundColor(colors.red)
-    end
-
-    local statusText = panelState.connected and " CONNECTED " or " DISCONNECTED "
-    local title = " CRANE CONTROL PANEL "
-    local padLen = TERM_W - #title - #statusText
-
-    term.write(title)
-    if padLen > 0 then
-        term.write(string.rep(" ", padLen))
-    end
-    term.write(statusText)
-    term.setBackgroundColor(colors.black)
-end
-
---- Draw the separator line.
-local function drawSep(row, char)
-    term.setCursorPos(1, row)
-    term.setTextColor(colors.gray)
-    term.write(string.rep(char or "-", TERM_W))
-end
-
---- Draw the section labels for source and destination.
-local function drawLabels()
-    term.setCursorPos(3, L.LABEL)
-    term.setTextColor(colors.yellow)
-    term.write(SOURCE_LABEL)
-    term.setCursorPos(28, L.LABEL)
-    term.write(DEST_LABEL)
-end
-
---- Draw a single input field.
---- @param key string field key ("src_x", etc.)
-local function drawField(key)
-    local f = FIELDS[key]
-    local isActive = (panelState.activeField == key)
-
-    -- Label
-    term.setCursorPos(f.x_label, f.y)
-    term.setTextColor(isActive and colors.white or colors.lightGray)
-    term.write(f.label .. ":")
-
-    -- Display value (right-aligned within the field width)
-    local display = f.value
-    if display == "" then display = EMPTY_FIELD end
-    display = string.rep(" ", f.width - #display) .. display
-
-    term.setCursorPos(f.x, f.y)
-    if isActive then
-        term.setBackgroundColor(colors.blue)
-        term.setTextColor(colors.white)
-    else
-        term.setBackgroundColor(colors.black)
-        term.setTextColor(colors.white)
-    end
-    term.write(display)
-
-    -- Reset background
-    if isActive then
-        term.setBackgroundColor(colors.black)
-    end
-end
-
---- Draw all input fields.
-local function drawFields()
-    for k in pairs(FIELDS) do
-        drawField(k)
-    end
-end
-
---- Draw command buttons.
-local function drawButtons()
-    for _, b in ipairs(BUTTON_DEFS) do
-        local label = " " .. b.label .. " "
-        local bg, fg
-
-        if not panelState.registered then
-            -- Not yet connected — all buttons gray
-            bg = colors.gray
-            fg = colors.gray
-        elseif panelState.pending and b.action ~= "EMERGENCY_STOP" then
-            -- Command in flight — only EMERGENCY_STOP is usable
-            bg = colors.gray
-            fg = colors.gray
-        elseif b.action == "EMERGENCY_STOP" then
-            -- Emergency stop always orange when registered
-            bg = colors.orange
-            fg = colors.white
-        else
-            bg = colors.blue
-            fg = colors.white
-        end
-
-        term.setCursorPos(b.col, L.BUTTONS)
-        term.setBackgroundColor(bg)
-        term.setTextColor(fg)
-        term.write(label)
-    end
-    term.setBackgroundColor(colors.black)
-end
-
---- Draw the status bar.
-local function drawStatus()
-    term.setCursorPos(2, L.STATUS)
-    term.setTextColor(colors.white)
-
-    local status
-    if panelState.connection == nil then
-        status = "Status: ---"
-    elseif panelState.craneError then
-        status = "Status: ERROR (" .. panelState.craneErrorMsg .. ")"
-    elseif panelState.pending then
-        status = "Status: PENDING (cmd #" .. panelState.pendingSeq .. ")"
-    elseif panelState.craneBusy then
-        status = "Status: BUSY"
-    else
-        status = "Status: IDLE"
-    end
-
-    local pos = string.format("Pos: (%d, %d)",
-        panelState.cranePos[1], panelState.cranePos[2])
-    local sticker = panelState.craneSticker and "ON" or "OFF"
-    local stickerText = "Sticker: " .. sticker
-    local idText = "Crane: " .. panelState.craneId
-
-    local parts = { status, pos, stickerText, idText }
-    local line = parts[1]
-    for i = 2, #parts do
-        if #line + #parts[i] + 3 <= TERM_W then
-            line = line .. "  |  " .. parts[i]
-        else
-            break
-        end
-    end
-
-    -- Pad to end of line
-    term.write(line)
-    if #line < TERM_W then
-        term.write(string.rep(" ", TERM_W - #line))
-    end
-end
-
---- Draw the operation log (last LOG_HEIGHT lines).
-local function drawLog()
-    local lines = panelState.logLines
-    local startIdx = math.max(1, #lines - LOG_HEIGHT + 1)
-
-    for i = 1, LOG_HEIGHT do
-        local row = L.LOG_START + i - 1
-        if row > TERM_H then break end
-
-        term.setCursorPos(1, row)
-        local idx = startIdx + i - 1
-        if idx <= #lines then
-            local entry = lines[idx]
-            term.setTextColor(entry.color)
-            local text = entry.text
-            if #text > TERM_W then
-                text = text:sub(1, TERM_W)
-            end
-            term.write(text)
-            if #text < TERM_W then
-                term.write(string.rep(" ", TERM_W - #text))
-            end
-        else
-            term.setTextColor(colors.black)
-            term.write(string.rep(" ", TERM_W))
-        end
-    end
-end
-
---- Full screen redraw.
-local function fullRedraw()
-    term.clear()
-    drawHeader()
-    drawSep(L.SEP1, "-")
-    drawLabels()
-    drawFields()
-    drawButtons()
-    drawSep(L.SEP2, "-")
-    drawStatus()
-    drawLog()
-    term.setCursorPos(1, TERM_H)
-end
-
---- Redraw only the elements that change frequently.
-local function quickRedraw()
-    drawHeader()
-    drawStatus()
-    drawLog()
-    drawFields()
-    drawButtons()
 end
 
 ------------------------------------------------------------
@@ -380,8 +87,7 @@ end
 --- @param params table|nil command parameters
 local function sendCommand(command, params)
     if not panelState.connection then
-        addLog("Cannot send: not connected", colors.red)
-        quickRedraw()
+        panelUI:addLogLine(timestamp() .. " Cannot send: not connected", colors.red)
         return
     end
 
@@ -399,16 +105,19 @@ local function sendCommand(command, params)
         },
     }
 
-    addLog(timestamp() .. " Sending: " .. command)
+    panelUI:addLogLine(timestamp() .. " Sending: " .. command)
     local ok = pcall(panelState.connection.send, panelState.connection, msg)
     if not ok then
-        addLog("SEND FAILED — connection lost", colors.red)
+        panelUI:addLogLine("SEND FAILED — connection lost", colors.red)
         panelState.connection = nil
         panelState.connected = false
         panelState.registered = false
         panelState.pending = false
     end
-    quickRedraw()
+
+    panelUI:setPending(panelState.pending)
+    panelUI:setConnected(panelState.connected, nil)
+    panelUI:setRegistered(panelState.registered)
 end
 
 ------------------------------------------------------------
@@ -427,7 +136,7 @@ local function handleMessage(msg)
     if body.message_type == "REGISTER" then
         panelState.craneId = body.crane_id or "?"
         panelState.registered = true
-        addLog(timestamp() .. " Registered: crane " .. panelState.craneId, colors.green)
+        panelUI:addLogLine(timestamp() .. " Registered: crane " .. panelState.craneId, colors.green)
 
         -- Handshake complete — start keepalive
         panelState.keepAliveTimer = os.startTimer(KEEPALIVE_INTERVAL)
@@ -439,18 +148,22 @@ local function handleMessage(msg)
                 type = "request",
                 body = { message_type = "CONFIG_QUERY" },
             })
-            addLog(timestamp() .. " Sent config query", colors.lightGray)
+            panelUI:addLogLine(timestamp() .. " Sent config query", colors.lightGray)
         end
+
+        panelUI:setRegistered(true)
+        panelUI:setConnected(true, panelState.craneId)
 
     elseif body.message_type == "ACK" then
         panelState.pending = false
         local ackStatus = body.status or "?"
         local ackMsg = body.message or ""
         if ackStatus == "ok" then
-            addLog(timestamp() .. "  " .. body.command_seq .. " OK", colors.green)
+            panelUI:addLogLine(timestamp() .. "  " .. body.command_seq .. " OK", colors.green)
         else
-            addLog(timestamp() .. "  " .. body.command_seq .. " ERROR: " .. ackMsg, colors.red)
+            panelUI:addLogLine(timestamp() .. "  " .. body.command_seq .. " ERROR: " .. ackMsg, colors.red)
         end
+        panelUI:setPending(false)
 
     elseif body.message_type == "STATUS" then
         local st = body.status or {}
@@ -463,212 +176,89 @@ local function handleMessage(msg)
         panelState.craneError = st.error == true
         panelState.craneErrorMsg = st.error_msg or ""
 
+        panelUI:setCraneStatus({
+            pos = panelState.cranePos,
+            sticker = panelState.craneSticker,
+            busy = panelState.craneBusy,
+            error = panelState.craneError,
+            errorMsg = panelState.craneErrorMsg,
+        })
+
     elseif body.message_type == "CONFIG_RESPONSE" then
         local cfg = body.config or {}
-        addLog(timestamp() .. " Config: " .. (cfg.max_x or "?")
+        panelUI:addLogLine(timestamp() .. " Config: " .. (cfg.max_x or "?")
             .. "x" .. (cfg.max_y or "?") .. " grid", colors.yellow)
     end
 end
 
 ------------------------------------------------------------
--- TOUCH / INPUT HANDLING
+-- CALLBACKS
 ------------------------------------------------------------
 
---- Check if a point is within a rectangular region.
-local function hitRect(x, y, rx, ry, rw, rh)
-    return x >= rx and x <= rx + rw - 1 and y >= ry and y <= ry + rh - 1
+local function onCommand(action, params)
+    if action == "__ERROR" then
+        panelUI:addLogLine(timestamp() .. " " .. tostring(params), colors.red)
+        return
+    end
+    sendCommand(action, params)
 end
 
---- Handle mouse click events.
---- @param mx number click x
---- @param my number click y
-local function handleTouch(mx, my)
-    -- Block all interaction while a command is in flight (EMERGENCY_STOP
-    -- is handled separately below).
-    if panelState.pending then
-        -- Only allow clicking EMERGENCY_STOP
-        if my == L.BUTTONS and panelState.registered then
-            for _, b in ipairs(BUTTON_DEFS) do
-                if b.action == "EMERGENCY_STOP" then
-                    local btnW = #b.label + 2
-                    if mx >= b.col and mx < b.col + btnW then
-                        sendCommand("EMERGENCY_STOP")
-                        return
-                    end
-                end
-            end
+local function onConnectionRequest(request)
+    if panelState.connection then
+        -- Already have a crane — reject
+        local dummy = listener:accept("busy", request)
+        panelUI:addLogLine(timestamp() .. " Rejected extra connection", colors.yellow)
+    else
+        local conn = listener:accept("crane_panel_v1.0", request)
+        panelState.connection = conn
+        panelState.connected = true
+        panelState.pending = false
+        panelState.registered = false
+        panelState.pendingConfigQuery = true
+        panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
+
+        panelUI:addLogLine(timestamp() .. " Crane connecting...", colors.yellow)
+        panelUI:setConnected(true, nil)
+        panelUI:setPending(false)
+        panelUI:setRegistered(false)
+    end
+end
+
+local function onMessage(cid, msg)
+    -- Only process messages from the active connection
+    if not panelState.connection or cid ~= panelState.connection.id then return end
+    handleMessage(msg)
+end
+
+local function onTimer(timerId)
+    -- Watchdog: check for connection timeout
+    if timerId == panelState.watchdogTimer and panelState.connected then
+        local now = os.epoch("utc")
+        local elapsed = (now - (panelState.lastMessageTime or now)) / 1000
+        if elapsed >= CONNECTION_TIMEOUT then
+            panelUI:addLogLine(timestamp() .. " Crane disconnected (timeout)", colors.red)
+            panelState.connection = nil
+            panelState.connected = false
+            panelState.registered = false
+            panelState.craneId = "?"
+            panelState.keepAliveTimer = nil
+            panelUI:setConnected(false, nil)
+            panelUI:setRegistered(false)
+            panelUI:setPending(false)
+        else
+            -- Restart watchdog
+            panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
         end
         return
     end
 
-    -- Check input fields
-    for key, f in pairs(FIELDS) do
-        if hitRect(mx, my, f.x - 1, f.y, f.width + 2, 1) then
-            panelState.activeField = key
-            drawField(key)
-            return
-        end
-    end
-
-    -- Clicking elsewhere deactivates field
-    if panelState.activeField then
-        local oldField = panelState.activeField
-        panelState.activeField = nil
-        drawField(oldField)
-    end
-
-    -- Check buttons
-    if my == L.BUTTONS and panelState.registered then
-        for _, b in ipairs(BUTTON_DEFS) do
-            local btnW = #b.label + 2  -- " LABEL " with spaces
-            if mx >= b.col and mx < b.col + btnW then
-                -- Dispatch action
-                if b.action == "GOTO" then
-                    local x, y = getSrcCoords()
-                    if x and y then
-                        sendCommand("GOTO", { x = x, y = y })
-                    else
-                        addLog("Set source coordinates first", colors.red)
-                        quickRedraw()
-                    end
-                elseif b.action == "PICKANDDROP" then
-                    local sx, sy = getSrcCoords()
-                    local dx, dy = getDstCoords()
-                    if sx and sy and dx and dy then
-                        sendCommand("PICKANDDROP", { src = { x = sx, y = sy }, dst = { x = dx, y = dy } })
-                    else
-                        addLog("Set source AND destination coordinates first", colors.red)
-                        quickRedraw()
-                    end
-                elseif b.action == "HOME" then
-                    sendCommand("HOME")
-                elseif b.action == "EMERGENCY_STOP" then
-                    sendCommand("EMERGENCY_STOP")
-                end
-                return
-            end
-        end
-    end
-end
-
---- Handle character input (for editing active field).
---- @param char string typed character
-local function handleChar(char)
-    local f = panelState.activeField
-    if not f or panelState.pending then return end
-    local field = FIELDS[f]
-    if not field then return end
-
-    -- Only accept digits
-    if char:match("^[0-9]$") and #field.value < field.width then
-        field.value = field.value .. char
-        drawField(f)
-    end
-end
-
---- Handle key events (backspace, enter).
---- @param keyCode number
-local function handleKey(keyCode)
-    local f = panelState.activeField
-    if not f or panelState.pending then return end
-    local field = FIELDS[f]
-    if not field then return end
-
-    if keyCode == keys.enter or keyCode == keys.tab then
-        -- Deactivate field
-        panelState.activeField = nil
-        drawField(f)
-
-        -- Tab to next field
-        if keyCode == keys.tab then
-            local keys = { "src_x", "src_y", "dst_x", "dst_y" }
-            for i, k in ipairs(keys) do
-                if k == f then
-                    local nextKey = keys[i + 1] or keys[1]
-                    panelState.activeField = nextKey
-                    drawField(nextKey)
-                    break
-                end
-            end
-        end
-    elseif keyCode == keys.backspace then
-        -- Remove last character
-        field.value = field.value:sub(1, -2)
-        drawField(f)
-    end
-end
-
-------------------------------------------------------------
--- MAIN EVENT LOOP
-------------------------------------------------------------
-
-local function mainLoop()
-    fullRedraw()
-    addLog(timestamp() .. " Panel started — waiting for crane...", colors.yellow)
-    addLog("Address: " .. (id.address or "unknown"), colors.yellow)
-    quickRedraw()
-
-    while true do
-        local event, id, p2, p3, ch, dist = os.pullEvent()
-
-        if event == "mouse_click" then
-            handleTouch(p2, p3)   -- p2 = x, p3 = y
-            -- quickRedraw() is called inside handleTouch/handleChar/handleKey
-
-        elseif event == "char" then
-            handleChar(id)
-
-        elseif event == "key" then
-            handleKey(id)
-
-        elseif event == "ecnet2_request" and id == listener.id then
-            if panelState.connection then
-                -- Already have a crane — reject
-                local dummy = listener:accept("busy", p2)
-                addLog(timestamp() .. " Rejected extra connection", colors.yellow)
-            else
-                local conn = listener:accept("crane_panel_v1.0", p2)
-                panelState.connection = conn
-                panelState.connected = true
-                panelState.pending = false
-                panelState.registered = false
-                panelState.pendingConfigQuery = true
-                panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
-
-                addLog(timestamp() .. " Crane connecting...", colors.yellow)
-            end
-            quickRedraw()
-
-        elseif event == "timer" and panelState.connected and id == panelState.watchdogTimer then
-            -- Check disconnect watchdog
-            local now = os.epoch("utc")
-            local elapsed = (now - (panelState.lastMessageTime or now)) / 1000
-            if elapsed >= CONNECTION_TIMEOUT then
-                addLog(timestamp() .. " Crane disconnected (timeout)", colors.red)
-                panelState.connection = nil
-                panelState.connected = false
-                panelState.registered = false
-                panelState.craneId = "?"
-                panelState.keepAliveTimer = nil
-            else
-                -- Restart watchdog
-                panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
-            end
-            quickRedraw()
-
-        elseif event == "timer" and panelState.connected and id == panelState.keepAliveTimer then
-            -- Send a keepalive ping to keep the connection alive
-            pcall(panelState.connection.send, panelState.connection, {
-                type = "ping",
-                body = { message_type = "PING" },
-            })
-            panelState.keepAliveTimer = os.startTimer(KEEPALIVE_INTERVAL)
-
-        elseif event == "ecnet2_message" and panelState.connection
-               and id == panelState.connection.id then
-            handleMessage(p3)
-            quickRedraw()
-        end
+    -- Keepalive: send a ping
+    if timerId == panelState.keepAliveTimer and panelState.connected then
+        pcall(panelState.connection.send, panelState.connection, {
+            type = "ping",
+            body = { message_type = "PING" },
+        })
+        panelState.keepAliveTimer = os.startTimer(KEEPALIVE_INTERVAL)
     end
 end
 
@@ -690,10 +280,35 @@ print("ECNet2 address: " .. (id.address or "unknown"))
 print("Copy this address to crane-remote-config.lua on the crane.")
 print("Waiting for connection...")
 
+-- Wire up UI callbacks
+-- (panelUI.create already called; but we create it here so it can
+--  reference listener and panelState closures)
+local ui = panelUI.create({
+    callbacks = {
+        onCommand           = onCommand,
+        onConnectionRequest = onConnectionRequest,
+        onMessage           = onMessage,
+        onTimer             = onTimer,
+    },
+})
 
-parallel.waitForAny(mainLoop, ecnet2.daemon)
+-- Show initial log lines
+ui:addLogLine(timestamp() .. " Panel started — waiting for crane...", colors.yellow)
+ui:addLogLine("Address: " .. (id.address or "unknown"), colors.yellow)
 
--- Cleanup
+------------------------------------------------------------
+-- EVENT LOOP
+------------------------------------------------------------
+
+parallel.waitForAny(
+    function() ui:run() end,
+    ecnet2.daemon
+)
+
+------------------------------------------------------------
+-- CLEANUP
+------------------------------------------------------------
+
 if panelState.connection then
     pcall(panelState.connection.send, panelState.connection, {
         type = "request",
