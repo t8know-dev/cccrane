@@ -302,9 +302,9 @@ local function mainLoop()
                     heartbeatTimer = os.startTimer(rc.HEARTBEAT_INTERVAL)
                 end
             elseif msg.body.message_type == "PING" then
-                    sendStatus()
+                sendStatus()
 
-                elseif msg.body.message_type == "CONFIG_QUERY" then
+            elseif msg.body.message_type == "CONFIG_QUERY" then
                 sendMessage({
                     type = "response",
                     body = {
