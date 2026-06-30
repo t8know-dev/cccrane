@@ -10,6 +10,10 @@
 --   local i = e.Identity("/.ecnet2")
 --   print(i.address)
 
+-- CC:Tweaked doesn't always expose a global `package` table.
+if not package then package = {} end
+if not package.path then package.path = "?.lua;?/init.lua" end
+
 -- /cccrane/?.lua              → require "ecnet2"          → /cccrane/ecnet2.lua (shim)
 -- /cccrane/ecnet/?.lua        → require "ecnet2.constants" → /cccrane/ecnet/ecnet2/constants.lua
 -- /cccrane/ccryptolib/?.lua   → require "ccryptolib.random"→ /cccrane/ccryptolib/ccryptolib/random.lua
