@@ -103,6 +103,11 @@ local panelState = {
 
     -- Keepalive
     keepAliveTimer  = nil,    -- timer ID for periodic keepalive pings
+
+    -- Handshake completion
+    pendingConfigQuery = false,  -- true if CONFIG_QUERY needs to be sent after handshake
+    registered         = false,  -- true once REGISTER received (handshake fully done)
+    handshakeTimer     = nil,    -- timer ID for handshake completion timeout
 }
 
 local CONNECTION_TIMEOUT = 15  -- seconds without message = disconnected
@@ -250,9 +255,9 @@ local function drawButtons()
         local label = " " .. b.label .. " "
         local bg, fg
 
-        if panelState.connection == nil or b.action == "EMERGENCY_STOP" then
+        if not panelState.registered or b.action == "EMERGENCY_STOP" then
             -- EMERGENCY_STOP is always enabled if connected
-            if b.action == "EMERGENCY_STOP" and panelState.connection then
+            if b.action == "EMERGENCY_STOP" and panelState.registered then
                 bg = colors.orange
                 fg = colors.white
             elseif b.action == "EMERGENCY_STOP" then
@@ -403,6 +408,7 @@ local function sendCommand(command, params)
         addLog("SEND FAILED — connection lost", colors.red)
         panelState.connection = nil
         panelState.connected = false
+        panelState.registered = false
         panelState.pending = false
     end
     quickRedraw()
@@ -423,7 +429,25 @@ local function handleMessage(msg)
 
     if body.message_type == "REGISTER" then
         panelState.craneId = body.crane_id or "?"
+        panelState.registered = true
         addLog(timestamp() .. " Registered: crane " .. panelState.craneId, colors.green)
+
+        -- Handshake complete — cancel the timeout timer and start keepalive
+        if panelState.handshakeTimer then
+            os.cancelTimer(panelState.handshakeTimer)
+            panelState.handshakeTimer = nil
+        end
+        panelState.keepAliveTimer = os.startTimer(KEEPALIVE_INTERVAL)
+
+        -- Send deferred CONFIG_QUERY now that the handshake is complete
+        if panelState.pendingConfigQuery then
+            panelState.pendingConfigQuery = false
+            pcall(panelState.connection.send, panelState.connection, {
+                type = "request",
+                body = { message_type = "CONFIG_QUERY" },
+            })
+            addLog(timestamp() .. " Sent config query", colors.lightGray)
+        end
 
     elseif body.message_type == "ACK" then
         panelState.pending = false
@@ -483,7 +507,7 @@ local function handleTouch(mx, my)
     end
 
     -- Check buttons
-    if my == L.BUTTONS and panelState.connection then
+    if my == L.BUTTONS and panelState.registered then
         for _, b in ipairs(BUTTON_DEFS) do
             local btnW = #b.label + 2  -- " LABEL " with spaces
             if mx >= b.col and mx < b.col + btnW then
@@ -591,19 +615,23 @@ local function mainLoop()
                 panelState.connection = conn
                 panelState.connected = true
                 panelState.pending = false
+                panelState.registered = false
+                panelState.pendingConfigQuery = true
                 panelState.lastMessageTime = os.epoch("utc")
                 panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
-                panelState.keepAliveTimer = os.startTimer(KEEPALIVE_INTERVAL)
+                panelState.handshakeTimer = os.startTimer(5)  -- timeout for handshake completion
 
-                addLog(timestamp() .. " Crane connected!", colors.green)
-
-                -- Request config
-                pcall(conn.send, conn, {
-                    type = "request",
-                    body = { message_type = "CONFIG_QUERY" },
-                })
-                addLog(timestamp() .. " Sent config query", colors.lightGray)
+                addLog(timestamp() .. " Crane connecting...", colors.yellow)
             end
+            quickRedraw()
+
+        elseif event == "timer" and id == panelState.handshakeTimer then
+            -- Handshake did not complete in time — connection failed
+            addLog(timestamp() .. " Handshake timeout — connection failed", colors.red)
+            panelState.connection = nil
+            panelState.connected = false
+            panelState.registered = false
+            panelState.handshakeTimer = nil
             quickRedraw()
 
         elseif event == "timer" and panelState.connected and id == panelState.watchdogTimer then
@@ -614,6 +642,7 @@ local function mainLoop()
                 addLog(timestamp() .. " Crane disconnected (timeout)", colors.red)
                 panelState.connection = nil
                 panelState.connected = false
+                panelState.registered = false
                 panelState.craneId = "?"
                 panelState.keepAliveTimer = nil
             else
