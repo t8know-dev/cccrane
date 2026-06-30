@@ -1,6 +1,6 @@
 -- panel_ui.lua — PixelUI-based crane control panel UI (v2)
 --
--- Redesigned with visual hierarchy: bordered frames, progress bar,
+-- Redesigned with visual hierarchy: bordered frames, status indicators,
 -- loading indicator, and color-coded status elements.
 
 local pixelui = require("pixelui")
@@ -86,7 +86,6 @@ function PanelUI.create(opts)
     self:_buildHeader()
     self:_buildSourcePanel()
     self:_buildDestPanel()
-    self:_buildProgressBar()
     self:_buildPreviewLine()
     self:_buildButtons()
     self:_buildStatusFrame()
@@ -107,23 +106,22 @@ end
 
 function PanelUI:_calcLayout()
     -- 1=header, 2=sep, 3-4=source+dest(2 rows: title, fields),
-    -- 5=progress, 6=preview(standalone), 7=gap,
+    -- 5=preview(standalone), 7=gap,
     -- 9=buttons(1 row), 10=gap, 11-12=status(2 rows),
     -- 13=gap, 15+=log(4 lines)
     self._L = {
         HEADER    = 1,
         SEP1      = 2,
         INPUTS    = 3,     -- Source/Dest frame start
-        INPUT_END = 4,     -- frame end (2 rows)
-        PROGRESS  = 5,
+        INPUT_END = 5,     -- frame end (2 rows)
         PREVIEW   = 6,     -- standalone crane preview line
         GAP_BTN   = 7,
-        BUTTONS   = 9,     -- 1 row
-        GAP_BTN2  = 10,
-        STATUS    = 11,
+        BUTTONS   = 8,     -- 1 row
+        GAP_BTN2  = 9,
+        STATUS    = 10,
         STATUS_END= 12,
         GAP_LOG   = 13,
-        LOG_START = 15,
+        LOG_START = 14,
     }
     self._logRows = 4  -- fixed 4 log lines (frame = 5 rows)
 end
@@ -334,29 +332,6 @@ function PanelUI:_buildDestPanel()
 
     self._fields.dst_x = { tb = tbDstX, label = lblX }
     self._fields.dst_y = { tb = tbDstY, label = lblY }
-end
-
-function PanelUI:_buildProgressBar()
-    local a, r = self._app, self._root
-    local W = self._termW
-    local L = self._L
-
-    self._progressBar = a:createProgressBar({
-        x = 1, y = L.PROGRESS,
-        width = W - 1,
-        height = 1,
-        min = 0,
-        max = 100,
-        value = 0,
-        label = "(—, —)",
-        showPercent = true,
-        bg = C.bgDark,
-        fg = C.fgWhite,
-        trackColor = C.bgPanel,
-        fillColor = C.ok,
-        border = { color = C.border },
-    })
-    r:addChild(self._progressBar)
 end
 
 function PanelUI:_buildPreviewLine()
@@ -609,10 +584,6 @@ function PanelUI:_onResize()
         emrg.widget:setPosition(W - 12, L.BUTTONS)
     end
 
-    if self._progressBar then
-        self._progressBar:setSize(W - 1, 1)
-    end
-
     -- Resize log frame (6 lines + 1 for title = 7)
     if self._logFrame then
         self._logFrame:setSize(W - 1, self._logRows + 1)
@@ -726,16 +697,11 @@ function PanelUI:setCraneStatus(opts)
     if opts.errorMsg  ~= nil then self._state.craneErrorMsg = opts.errorMsg end
     self:_updateStatus()
     self:_updatePreview()
-    self:_updateProgress()
 end
 
 function PanelUI:setGridSize(maxX, maxY)
     self._state.gridMaxX = maxX or 100
     self._state.gridMaxY = maxY or 100
-    if self._progressBar then
-        self._progressBar:setRange(0, self._state.gridMaxX)
-    end
-    self:_updateProgress()
 end
 
 --- Show or hide the pending loading indicator.
@@ -856,30 +822,6 @@ function PanelUI:_updateStatus()
     local grid = string.format("%dx%d", s.gridMaxX, s.gridMaxY)
     local line = status .. "  |  " .. pos .. "  |  " .. sticker .. "  |  " .. grid
     sl:setText(line)
-end
-
-function PanelUI:_updatePreview()
-    local x, y = self._state.cranePos[1], self._state.cranePos[2]
-    local text = string.format("   crane: (%d, %d)", x, y)
-    if self._previewLabel then self._previewLabel:setText(text) end
-end
-
-function PanelUI:_updateProgress()
-    local pb = self._progressBar
-    if not pb then return end
-    local x = self._state.cranePos[1]
-    local maxX = self._state.gridMaxX
-    pb:setValue(x)
-    pb:setLabel(string.format("(%d, %d)", self._state.cranePos[1], self._state.cranePos[2]))
-    -- Color based on position
-    local pct = maxX > 0 and (x / maxX) or 0
-    if pct > 0.9 then
-        pb:setColors(C.bgPanel, C.fgRed, C.fgWhite)
-    elseif pct > 0.7 then
-        pb:setColors(C.bgPanel, C.fgOrange, C.fgWhite)
-    else
-        pb:setColors(C.bgPanel, C.ok, C.fgWhite)
-    end
 end
 
 function PanelUI:_refreshLog()
