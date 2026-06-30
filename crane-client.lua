@@ -8,10 +8,18 @@
 -- Requires:
 --   crane-remote-config.lua  (PANEL_ADDRESS, heartbeat, reconnect settings)
 --   crane-lib.lua            (crane hardware control library)
+--   ecnet/                   (ECNet2 networking framework)
 --   ccryptolib/              (crypto primitives for ECNet2)
 
-local ecnet2 = require "cccrane.ecnet2"
-local random = require "cccrane.ccryptolib.ccryptolib.random"
+-- Add framework paths so require("ecnet2") and require("ccryptolib.*") resolve
+package.path = package.path
+    .. ";/cccrane/ecnet/?.lua"
+    .. ";/cccrane/ecnet/?/init.lua"
+    .. ";/cccrane/ccryptolib/?.lua"
+    .. ";/cccrane/ccryptolib/?/init.lua"
+
+local ecnet2 = require "ecnet2"
+local random = require "ccryptolib.random"
 random.initWithTiming()
 
 local rc = dofile("/cccrane/crane-remote-config.lua")

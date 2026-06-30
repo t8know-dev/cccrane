@@ -5,132 +5,127 @@
 - **ComputerCraft: Tweaked** (CC:Tweaked) — dwa komputery
 - **Create mod** (dla mechaniki żurawia)
 - **Wireless modem** — podłączony do strony **top** na obu komputerach
-- **Dostęp do internetu** na komputerach CC (opcjonalnie, dla bezpieczniejszej inicjalizacji RNG)
+- **Dostęp do internetu** na komputerach CC do `git clone`
 
-## Pobieranie plików na komputer CC
+## Instalacja przez git clone
 
-Wszystkie pliki projektu znajdują się w katalogu `/cccrane/` na każdym komputerze.
-
-### Komputer PANEL
+Repozytorium projektu zawiera wszystko, czego potrzebujesz — framework ECNet2, bibliotekę ccryptolib oraz kod źródłowy. Wystarczy sklonować na każdym komputerze:
 
 ```
-# Utwórz katalog projektu
-mkdir /cccrane
-
-# Pobierz główne pliki
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/crane-panel.lua /cccrane/crane-panel.lua
-
-# Pobierz biblioteki
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/random.lua /cccrane/ccryptolib/ccryptolib/random.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/blake3.lua /cccrane/ccryptolib/ccryptolib/blake3.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/chacha20.lua /cccrane/ccryptolib/ccryptolib/chacha20.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/poly1305.lua /cccrane/ccryptolib/ccryptolib/poly1305.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/util.lua /cccrane/ccryptolib/ccryptolib/util.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/internal/util.lua /cccrane/ccryptolib/ccryptolib/internal/util.lua
+git clone https://github.com/TWOJ_USER/cccrane /cccrane
 ```
 
-### Komputer ŻURAW
-
-```
-# Utwórz katalog projektu
-mkdir /cccrane
-
-# Pobierz główne pliki
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/crane-client.lua /cccrane/crane-client.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/crane-lib.lua /cccrane/crane-lib.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/config.lua /cccrane/config.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/crane-remote-config.lua /cccrane/crane-remote-config.lua
-
-# Pobierz biblioteki
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/random.lua /cccrane/ccryptolib/ccryptolib/random.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/blake3.lua /cccrane/ccryptolib/ccryptolib/blake3.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/chacha20.lua /cccrane/ccryptolib/ccryptolib/chacha20.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/poly1305.lua /cccrane/ccryptolib/ccryptolib/poly1305.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/util.lua /cccrane/ccryptolib/ccryptolib/util.lua
-wget https://raw.githubusercontent.com/TWOJ_REPO/cccrane/main/ccryptolib/ccryptolib/internal/util.lua /cccrane/ccryptolib/ccryptolib/internal/util.lua
-```
-
-## Instalacja ECNet2
-
-ECNet2 jest zewnętrzną biblioteką (nie zawartą w repozytorium). Należy ją pobrać na **oba komputery**.
-
-### Opcja A: Pobranie z GitHub
-
-```lua
-wget https://raw.githubusercontent.com/Kuerschner/ecnet2/main/ecnet2.lua /cccrane/ecnet2.lua
-```
-
-### Opcja B: Ręczne skopiowanie
-
-Jeśli komputer nie ma dostępu do internetu, skopiuj plik `ecnet2.lua` przez dyskietkę lub pastebin:
-```
-pastebin get <PASTE_ID> /cccrane/ecnet2.lua
-```
-
-**Ważne**: plik musi znaleźć się w `/cccrane/ecnet2.lua` — skrypt ładuje go przez `require "cccrane.ecnet2"`.
-
-## Weryfikacja struktury plików
-
-Po instalacji sprawdź, czy struktura na każdym komputerze wygląda tak:
-
-### Komputer PANEL
+Po klonowaniu struktura na komputerze wygląda tak:
 
 ```
 /cccrane/
-├── crane-panel.lua
-├── ecnet2.lua
-└── ccryptolib/
-    └── ccryptolib/
-        ├── random.lua
-        ├── blake3.lua
-        ├── chacha20.lua
-        ├── poly1305.lua
-        ├── util.lua
-        └── internal/
-            └── util.lua
+├── crane-panel.lua              ← panel sterowania (komputer PANEL)
+├── crane-client.lua             ← klient żurawia (komputer ŻURAW)
+├── crane-lib.lua                ← biblioteka sterowania żurawiem
+├── crane.lua                    ← CLI wrapper (tryb standalone)
+├── crane-remote-config.lua      ← konfiguracja zdalna (komputer ŻURAW)
+├── config.lua                   ← konfiguracja żurawia
+├── DEPLOY.md                    ← ta instrukcja
+├── README.md
+├── CLAUDE.md
+├── ecnet/                       ← framework ECNet2 (submoduł)
+│   └── ecnet2/
+│       ├── init.lua
+│       ├── identity.lua
+│       ├── connection.lua
+│       ├── protocol.lua
+│       ├── listener.lua
+│       └── ...
+├── ccryptolib/                  ← biblioteka kryptograficzna (submoduł)
+│   └── ccryptolib/
+│       ├── random.lua
+│       ├── blake3.lua
+│       ├── chacha20.lua
+│       ├── poly1305.lua
+│       ├── ed25519.lua
+│       ├── x25519.lua
+│       └── internal/
+│           ├── util.lua
+│           └── ...
 ```
 
-### Komputer ŻURAW
+**Uwaga**: Jeśli nie masz dostępu do `git clone` na komputerze CC, pobierz pojedyncze pliki za pomocą `wget` (patrz niżej).
 
+### Alternatywnie — pobranie przez wget
+
+Jeśli `git clone` nie jest dostępne, pobierz pliki ręcznie:
+
+**Komputer PANEL:**
 ```
-/cccrane/
-├── crane-client.lua
-├── crane-lib.lua
-├── crane-remote-config.lua
-├── config.lua
-├── ecnet2.lua
-└── ccryptolib/
-    └── ccryptolib/
-        ├── random.lua
-        ├── blake3.lua
-        ├── chacha20.lua
-        ├── poly1305.lua
-        ├── util.lua
-        └── internal/
-            └── util.lua
+mkdir /cccrane
+
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/crane-panel.lua /cccrane/crane-panel.lua
+
+# Framework ECNet2
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/init.lua /cccrane/ecnet/ecnet2/init.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/identity.lua /cccrane/ecnet/ecnet2/identity.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/connection.lua /cccrane/ecnet/ecnet2/connection.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/protocol.lua /cccrane/ecnet/ecnet2/protocol.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/listener.lua /cccrane/ecnet/ecnet2/listener.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/class.lua /cccrane/ecnet/ecnet2/class.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/constants.lua /cccrane/ecnet/ecnet2/constants.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/uid.lua /cccrane/ecnet/ecnet2/uid.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/modems.lua /cccrane/ecnet/ecnet2/modems.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/ecnetd.lua /cccrane/ecnet/ecnet2/ecnetd.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/cipher_state.lua /cccrane/ecnet/ecnet2/cipher_state.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/handshake_state.lua /cccrane/ecnet/ecnet2/handshake_state.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/symmetric_state.lua /cccrane/ecnet/ecnet2/symmetric_state.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/address_encoder.lua /cccrane/ecnet/ecnet2/address_encoder.lua
+
+# CCryptoLib
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/random.lua /cccrane/ccryptolib/ccryptolib/random.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/blake3.lua /cccrane/ccryptolib/ccryptolib/blake3.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/chacha20.lua /cccrane/ccryptolib/ccryptolib/chacha20.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/poly1305.lua /cccrane/ccryptolib/ccryptolib/poly1305.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/util.lua /cccrane/ccryptolib/ccryptolib/util.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/ed25519.lua /cccrane/ccryptolib/ccryptolib/ed25519.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/x25519.lua /cccrane/ccryptolib/ccryptolib/x25519.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/x25519c.lua /cccrane/ccryptolib/ccryptolib/x25519c.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/sha256.lua /cccrane/ccryptolib/ccryptolib/sha256.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/aead.lua /cccrane/ccryptolib/ccryptolib/aead.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/util.lua /cccrane/ccryptolib/ccryptolib/internal/util.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/packing.lua /cccrane/ccryptolib/ccryptolib/internal/packing.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/sha512.lua /cccrane/ccryptolib/ccryptolib/internal/sha512.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/fp.lua /cccrane/ccryptolib/ccryptolib/internal/fp.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/fq.lua /cccrane/ccryptolib/ccryptolib/internal/fq.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/mp.lua /cccrane/ccryptolib/ccryptolib/internal/mp.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/curve25519.lua /cccrane/ccryptolib/ccryptolib/internal/curve25519.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/edwards25519.lua /cccrane/ccryptolib/ccryptolib/internal/edwards25519.lua
+```
+
+**Komputer ŻURAW — to samo plus pliki projektu:**
+```
+# Najpierw frameworki (jak wyżej), a potem:
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/crane-client.lua /cccrane/crane-client.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/crane-lib.lua /cccrane/crane-lib.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/config.lua /cccrane/config.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/crane-remote-config.lua /cccrane/crane-remote-config.lua
 ```
 
 ## Uruchomienie krok po kroku
 
-### Krok 1: Generowanie tożsamości ECNet2 (oba komputery)
+### Krok 1: Wygenerowanie tożsamości ECNet2
 
-Po raz pierwszy ECNet2 utworzy plik tożsamości automatycznie przy pierwszym uruchomieniu. Możesz też wygenerować go ręcznie:
+Przy pierwszym uruchomieniu ECNet2 automatycznie utworzy plik tożsamości w `/.ecnet2`. Możesz też wywołać ręcznie:
 
 ```
-lua -e "local e=require'cccrane.ecnet2' e.open('top') local i=e.Identity('/.ecnet2') print('ID:', i.address) e.close()"
+lua -e "local e=require'ecnet2' e.open('top') local i=e.Identity('/.ecnet2') print('ID:', i.address) e.close()"
 ```
-
-To utworzy plik `/.ecnet2` — klucz prywatny i publiczny twojego komputera.
 
 ### Krok 2: Uruchom panel
 
-Na komputerze panelu:
+Na komputerze **PANEL**:
 
 ```
 crane-panel
 ```
 
-Panel wyświetli:
+Panel wyświetli swój adres ECNet2. **Skopiuj go** — będzie potrzebny na żurawiu:
 ```
 === Crane Control Panel ===
 ECNet2 address: AZ2cVrQTGDLLRodwHFS3RoNYQOW0O_iCctVWxc9IrXQ=
@@ -138,38 +133,32 @@ Copy this address to crane-remote-config.lua on the crane.
 Waiting for connection...
 ```
 
-**Skopiuj adres ECNet2** (długi base64 string) — będzie potrzebny w następnym kroku.
-
-> **Uwaga**: Jeśli pojawi się błąd "attempt to use an uninitialized random generator", biblioteka `ccryptolib` nie została zainstalowana poprawnie. Sprawdź, czy plik `/cccrane/ccryptolib/ccryptolib/random.lua` istnieje.
-
 ### Krok 3: Skonfiguruj adres panelu na żurawiu
 
-Na komputerze żurawia edytuj plik `/cccrane/crane-remote-config.lua`:
+Na komputerze **ŻURAW** edytuj `crane-remote-config.lua`:
 
 ```
 edit /cccrane/crane-remote-config.lua
 ```
 
-Zmień linię:
+Zmień:
 ```lua
-    PANEL_ADDRESS = "PASTE_PANEL_ADDRESS_HERE",
+PANEL_ADDRESS = "PASTE_PANEL_ADDRESS_HERE",
 ```
 na:
 ```lua
-    PANEL_ADDRESS = "AZ2cVrQTGDLLRodwHFS3RoNYQOW0O_iCctVWxc9IrXQ=",
+PANEL_ADDRESS = "AZ2cVrQTGDLLRodwHFS3RoNYQOW0O_iCctVWxc9IrXQ=",
 ```
-
-Używając adresu, który wyświetlił się na panelu w Kroku 2.
 
 ### Krok 4: Uruchom klienta żurawia
 
-Na komputerze żurawia:
+Na komputerze **ŻURAW**:
 
 ```
 crane-client
 ```
 
-Powinieneś zobaczyć:
+Oczekiwany output:
 ```
 Crane client starting...
 State loaded, crane idle at (0, 0)
@@ -184,53 +173,50 @@ Na panelu pojawi się:
 [hh:mm:ss] Config: 97x56 grid
 ```
 
-### Krok 5: Sterowanie żurawiem
+### Krok 5: Sterowanie
 
-Panel jest gotowy do sterowania:
+Panel jest gotowy. Użyj przycisków i pól zgodnie z opisem w dalszej części dokumentu.
 
-1. Wpisz współrzędne **SOURCE (Pickup)** — skąd żuraw ma podnieść ładunek
-2. Wpisz współrzędne **DEST (Drop)** — gdzie żuraw ma odłożyć ładunek
-3. Kliknij przycisk ` GOTO ` — żuraw przejedzie na pozycję źródłową
-4. Kliknij ` PICKUP ` — żuraw podniesie ładunek
-5. Kliknij ` GOTO ` ponownie (lub od razu ` DROP ` jeśli już na pozycji docelowej)
-6. Kliknij ` DROP ` — żuraw odłoży ładunek
-
-Lub dla pełnego cyklu automatycznego:
-- Ustaw SOURCE i DEST
-- Kliknij ` GOTO ` → ` PICKUP ` → (automatycznie) → ` DROP `
-
-### Przyciski sterujące
-
-| Przycisk | Działanie |
-|---|---|
-| ` GOTO ` | Przejedź na pozycję SOURCE (x, y) |
-| ` PICKUP ` | Opuść → chwyć stickerem → podnieś do pozycji transportowej |
-| ` DROP ` | Opuść → zwolnij sticker → podnieś |
-| ` HOME ` | Wykonaj homing (jedź do pozycji (0,0)) |
-| ` EMRG ` | **EMERGENCY STOP** — natychmiastowe zatrzymanie ruchu |
+## Obsługa panelu
 
 ### Pola edycyjne
 
-- Kliknij na pole X/Y aby je aktywować (podświetli się na niebiesko)
-- Wpisz cyfry z klawiatury
-- **Enter** lub kliknij poza polem — zatwierdź
-- **Tab** — przejście do następnego pola
-- **Backspace** — usuń ostatnią cyfrę
+- **SOURCE (Pickup)**: X/Y — pozycja, skąd żuraw ma podnieść ładunek
+- **DEST (Drop)**: X/Y — pozycja, gdzie żuraw ma odłożyć ładunek
+- Kliknij w pole, aby je aktywować (niebieskie tło)
+- Wpisz cyfry z klawiatury, **Enter** zatwierdza, **Tab** przechodzi dalej
+- **Backspace** cofa ostatnią cyfrę
+
+### Przyciski
+
+| Przycisk | Działanie |
+|---|---|
+| ` GOTO ` | Przejedź na pozycję SOURCE |
+| ` PICKUP ` | Opuść → chwyć → podnieś do transportu |
+| ` DROP ` | Opuść → puść → podnieś |
+| ` HOME ` | Homing do (0,0) |
+| ` EMRG ` | Natychmiastowe zatrzymanie |
+
+### Pełny cykl automatyzacji
+
+1. Ustaw SOURCE (skąd) i DEST (dokąd)
+2. Kliknij ` GOTO ` → żuraw jedzie na pozycję źródłową
+3. Kliknij ` PICKUP ` → podnosi ładunek
+4. Kliknij ` GOTO ` ponownie (żuraw przejedzie na DEST)
+5. Kliknij ` DROP ` → odkłada ładunek
 
 ## Inicjalizacja generatora liczb losowych
 
-Skrypty domyślnie używają `random.initWithTiming()`, która zbiera entropię z timingów instrukcji VM przez ~512ms. Jest to wygodne, ale może być przewidywalne dla innych graczy na tym samym serwerze.
+Projekt domyślnie używa `random.initWithTiming()`, która zbiera entropię przez ~512ms.
 
 ### Bezpieczniejsza alternatywa (przez Krist WebSocket)
 
-Jeśli komputer ma dostęp do internetu, możesz zastąpić:
+Jeśli komputer ma dostęp do internetu, zastąp w skryptach:
 
 ```lua
 random.initWithTiming()
 ```
-
 przez:
-
 ```lua
 local postHandle = assert(http.post("https://krist.dev/ws/start", ""))
 local data = textutils.unserializeJSON(postHandle.readAll())
@@ -239,18 +225,33 @@ random.init(data.url)
 http.websocket(data.url).close()
 ```
 
+## Użycie standalone (bez panelu)
+
+Jeśli chcesz sterować żurawiem z terminala bez panelu:
+
+```
+crane 10 5 42 30
+```
+
+Wymaga plików: `crane.lua`, `crane-lib.lua`, `config.lua`.
+
 ## Rozwiązywanie problemów
+
+### "module 'ecnet2' not found"
+
+Sprawdź, czy struktura plików frameworka jest poprawna:
+```
+ls /cccrane/ecnet/ecnet2/init.lua
+```
 
 ### "attempt to use an uninitialized random generator"
 
-**Przyczyna**: Biblioteka `ccryptolib` nie jest zainstalowana lub jest w złej ścieżce.
-
-**Rozwiązanie**: Sprawdź, czy plik istnieje:
+Brak plików ccryptolib. Sprawdź:
 ```
 ls /cccrane/ccryptolib/ccryptolib/random.lua
 ```
 
-Wymagane pliki ccryptolib:
+Wymagane minimum:
 | Plik | Ścieżka |
 |---|---|
 | `random.lua` | `/cccrane/ccryptolib/ccryptolib/random.lua` |
@@ -259,43 +260,29 @@ Wymagane pliki ccryptolib:
 | `poly1305.lua` | `/cccrane/ccryptolib/ccryptolib/poly1305.lua` |
 | `util.lua` | `/cccrane/ccryptolib/ccryptolib/util.lua` |
 | `internal/util.lua` | `/cccrane/ccryptolib/ccryptolib/internal/util.lua` |
-
-### "module 'cccrane.ecnet2' not found"
-
-**Przyczyna**: Plik `ecnet2.lua` nie znajduje się w `/cccrane/`.
-
-**Rozwiązanie**: Pobierz ECNet2:
-```
-wget https://raw.githubusercontent.com/Kuerschner/ecnet2/main/ecnet2.lua /cccrane/ecnet2.lua
-```
+| `internal/packing.lua` | `/cccrane/ccryptolib/ccryptolib/internal/packing.lua` |
+| `ed25519.lua` | `/cccrane/ccryptolib/ccryptolib/ed25519.lua` |
+| `x25519.lua` | `/cccrane/ccryptolib/ccryptolib/x25519.lua` |
+| `x25519c.lua` | `/cccrane/ccryptolib/ccryptolib/x25519c.lua` |
+| `sha256.lua` | `/cccrane/ccryptolib/ccryptolib/sha256.lua` |
+| `aead.lua` | `/cccrane/ccryptolib/ccryptolib/aead.lua` |
+| `internal/sha512.lua` | `/cccrane/ccryptolib/ccryptolib/internal/sha512.lua` |
+| `internal/curve25519.lua` | `/cccrane/ccryptolib/ccryptolib/internal/curve25519.lua` |
+| `internal/edwards25519.lua` | `/cccrane/ccryptolib/ccryptolib/internal/edwards25519.lua` |
+| `internal/fp.lua` | `/cccrane/ccryptolib/ccryptolib/internal/fp.lua` |
+| `internal/fq.lua` | `/cccrane/ccryptolib/ccryptolib/internal/fq.lua` |
+| `internal/mp.lua` | `/cccrane/ccryptolib/ccryptolib/internal/mp.lua` |
 
 ### Panel pokazuje "DISCONNECTED"
 
-**Przyczyna**: Żuraw poza zasięgiem wireless (modem ma ograniczony zasięg ~64-128 bloków w zależności od konfiguracji serwera).
-
-**Rozwiązania**:
-- Przybliż komputery do siebie
-- Użyj wzmacniaczy sygnału (wireless bridge / chunkloader)
-- Sprawdź, czy modem na stronie `top` jest poprawnie podłączony na obu komputerach
+Żuraw poza zasięgiem wireless modemu (~64-128 bloków). Rozwiązania:
+- Zbliż komputery do siebie
+- Użyj wzmacniaczy sygnału / chunkloaderów
+- Sprawdź, czy modem jest na stronie **top**
 
 ### "SEND FAILED — connection lost"
 
-**Przyczyna**: Przerwane połączenie wireless — żuraw automatycznie próbuje się ponownie połączyć z backoffem.
-
-**Rozwiązanie**: Poczekaj aż żuraw ponownie się połączy (panel pokaże "CONNECTED"). Jeśli nie łączy się po dłuższym czasie, sprawdź czy panel jest uruchomiony.
-
-## Użycie standalone (bez panelu)
-
-Oryginalny `crane.lua` działa niezależnie od panelu, jeśli chcesz sterować żurawiem ręcznie z terminala:
-
-```
-crane 10 5 42 30
-```
-
-To wykona pełny cykl: podnieś z (10,5) → odłóż na (42,30). Wymaga plików:
-- `/cccrane/crane.lua`
-- `/cccrane/crane-lib.lua`
-- `/cccrane/config.lua`
+Przerwane połączenie. Żuraw automatycznie próbuje reconnect z backoffem. Panel wykryje timeout po 15s i pokaże DISCONNECTED. Po ponownym połączeniu wszystko wraca do normy.
 
 ## Struktura komunikacji ECNet2
 
