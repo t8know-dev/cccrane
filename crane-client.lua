@@ -33,6 +33,7 @@ local proto = id:Protocol {
 local conn = nil          -- active ECNet2 connection
 local busy = false         -- true while executing a command
 local heartbeatTimer = nil -- timer ID for periodic status
+local lastMessageTime = os.epoch("utc")  -- time of last received message (watchdog)
 
 ------------------------------------------------------------
 -- CONNECTION HELPERS
@@ -57,6 +58,7 @@ local function connectToPanel()
                     }
                 })
                 if ok3 then
+                    lastMessageTime = os.epoch("utc")
                     return c
                 end
             end
@@ -121,6 +123,7 @@ local function tryReconnect()
                 })
 
                 sendStatus()
+                lastMessageTime = os.epoch("utc")
                 return
             end
         end
@@ -202,6 +205,8 @@ local function msgRouter()
     while true do
         local event, p1, p2, p3, p4, p5 = os.pullEvent("ecnet2_message")
         if conn and p1 == conn.id then
+            -- Any message on this connection proves the link is alive
+            lastMessageTime = os.epoch("utc")
             if p3 and p3.type == "request" and p3.body
                and p3.body.message_type == "COMMAND"
                and p3.body.command == "EMERGENCY_STOP" then
@@ -238,6 +243,14 @@ local function mainLoop()
         local event, id, p2, p3, ch, dist = os.pullEvent()
 
         if event == "timer" and id == heartbeatTimer then
+            -- Disconnect watchdog: if we haven't heard from the panel for
+            -- more than CONNECTION_TIMEOUT seconds, assume connection is dead.
+            local elapsed = os.epoch("utc") - lastMessageTime
+            if elapsed > rc.CONNECTION_TIMEOUT * 2000 then
+                print(string.format("Disconnect detected (%ds silence), reconnecting...", elapsed / 1000))
+                conn = nil
+                tryReconnect()
+            end
             sendStatus()
             heartbeatTimer = os.startTimer(rc.HEARTBEAT_INTERVAL)
 

@@ -100,9 +100,13 @@ local panelState = {
     -- Disconnect watchdog
     lastMessageTime = nil,    -- os.epoch("utc") of last received message
     watchdogTimer   = nil,    -- timer ID for periodic disconnect checks
+
+    -- Keepalive
+    keepAliveTimer  = nil,    -- timer ID for periodic keepalive pings
 }
 
 local CONNECTION_TIMEOUT = 15  -- seconds without message = disconnected
+local KEEPALIVE_INTERVAL = 7   -- seconds between keepalive pings
 
 ------------------------------------------------------------
 -- ECNet2 SETUP
@@ -589,6 +593,7 @@ local function mainLoop()
                 panelState.pending = false
                 panelState.lastMessageTime = os.epoch("utc")
                 panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
+                panelState.keepAliveTimer = os.startTimer(KEEPALIVE_INTERVAL)
 
                 addLog(timestamp() .. " Crane connected!", colors.green)
 
@@ -610,11 +615,20 @@ local function mainLoop()
                 panelState.connection = nil
                 panelState.connected = false
                 panelState.craneId = "?"
+                panelState.keepAliveTimer = nil
             else
                 -- Restart watchdog
                 panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
             end
             quickRedraw()
+
+        elseif event == "timer" and panelState.connected and id == panelState.keepAliveTimer then
+            -- Send a keepalive ping to keep the connection alive
+            pcall(panelState.connection.send, panelState.connection, {
+                type = "ping",
+                body = { message_type = "PING" },
+            })
+            panelState.keepAliveTimer = os.startTimer(KEEPALIVE_INTERVAL)
 
         elseif event == "ecnet2_message" and panelState.connection
                and id == panelState.connection.id then
