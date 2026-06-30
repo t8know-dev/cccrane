@@ -120,7 +120,7 @@ function PanelUI:_calcLayout()
         GAP_LOG   = 11,
         LOG_START = 12,
     }
-    self._logRows = 5  -- fixed 5 log lines (frame = 7 rows)
+    self._logRows = 7  -- fixed 7 log lines (frame = 9 rows)
 end
 
 -- ── Widget Builders ──────────────────────────────────────────────
@@ -446,7 +446,7 @@ function PanelUI:_buildLogArea()
     self._logFrame = a:createFrame({
         x = 1, y = L.LOG_START,
         width = W - 1,
-        height = self._logRows + 1,
+        height = self._logRows + 2,
         bg = C.bgDark,
         border = { color = C.border },
     })
@@ -568,7 +568,7 @@ function PanelUI:_onResize()
 
     -- Resize log frame (6 lines + 1 for title = 7)
     if self._logFrame then
-        self._logFrame:setSize(W - 1, self._logRows + 1)
+        self._logFrame:setSize(W - 1, self._logRows + 2)
     end
     -- Rebuild log widgets if needed
     if #self._logWidgets ~= self._logRows then
