@@ -111,13 +111,13 @@ function PanelUI:_calcLayout()
         HEADER    = 1,
         SEP1      = 2,
         INPUTS    = 3,     -- Source/Dest frame start
-        INPUT_END = 4,     -- frame end (2 rows)
-        GAP_BTN   = 5,
-        BUTTONS   = 6,     -- 1 row
-        GAP_BTN2  = 7,
-        STATUS    = 8,
-        STATUS_END= 9,
-        GAP_LOG   = 10,
+        INPUT_END = 5,     -- frame end (3 rows)
+        GAP_BTN   = 6,
+        BUTTONS   = 7,     -- 1 row
+        GAP_BTN2  = 8,
+        STATUS    = 9,
+        STATUS_END= 10,
+        GAP_LOG   = 11,
         LOG_START = 12,
     }
     self._logRows = 6  -- fixed 6 log lines (frame = 7 rows)
