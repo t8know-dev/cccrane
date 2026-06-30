@@ -1,4 +1,4 @@
--- crane-panel.lua — Crane control panel (ECNet2 server)
+-- crane-panel.lua — v1 Crane control panel (ECNet2 server)
 --
 -- Full-screen terminal GUI for remotely controlling a crane via ECNet2.
 -- Displays source/destination position fields, command buttons, crane status,
@@ -13,7 +13,7 @@
 dofile("/cccrane/init.lua")
 
 local ecnet2 = require "ecnet2"
-local random = require "ccryptolib.random"
+local random = require "ccryptolib/ccryptolib/random"
 random.initWithTiming()
 
 ------------------------------------------------------------

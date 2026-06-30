@@ -1,6 +1,6 @@
 --- Point arithmetic on the Edwards25519 Edwards curve.
 
-local fp = require "ccryptolib.internal.fp"
+local fp = require "ccryptolib/ccryptolib/internal.fp"
 
 local unpack = unpack or table.unpack
 

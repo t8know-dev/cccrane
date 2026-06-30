@@ -1,7 +1,7 @@
-local constants = require "ecnet2.constants"
-local Identity = require "ecnet2.identity"
-local modems = require "ecnet2.modems"
-local ecnetd = require "ecnet2.ecnetd"
+local constants = require "ecnet/ecnet2/constants"
+local Identity = require "ecnet/ecnet2/identity"
+local modems = require "ecnet/ecnet2/modems"
+local ecnetd = require "ecnet/ecnet2/ecnetd"
 local expect = require "cc.expect"
 
 local module = {}

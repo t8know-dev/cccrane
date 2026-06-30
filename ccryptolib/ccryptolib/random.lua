@@ -1,7 +1,7 @@
 local expect   = require "cc.expect".expect
-local blake3   = require "ccryptolib.blake3"
-local chacha20 = require "ccryptolib.chacha20"
-local util     = require "ccryptolib.internal.util"
+local blake3   = require "ccryptolib/ccryptolib/blake3"
+local chacha20 = require "ccryptolib/ccryptolib/chacha20"
+local util     = require "ccryptolib/ccryptolib/internal.util"
 
 local lassert = util.lassert
 

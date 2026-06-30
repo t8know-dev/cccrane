@@ -1,5 +1,5 @@
 local expect = require "cc.expect"
-local constants = require "ecnet2.constants"
+local constants = require "ecnet/ecnet2/constants"
 
 --- Opens a modem with the given peripheral name for exchanging messages.
 --- @param modem string

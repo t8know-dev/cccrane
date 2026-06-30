@@ -1,8 +1,8 @@
 --- Point arithmetic on the Curve25519 Montgomery curve.
 
-local fp = require "ccryptolib.internal.fp"
-local ed = require "ccryptolib.internal.edwards25519"
-local random = require "ccryptolib.random"
+local fp = require "ccryptolib/ccryptolib/internal.fp"
+local ed = require "ccryptolib/ccryptolib/internal.edwards25519"
+local random = require "ccryptolib/ccryptolib/random"
 
 --- @class MtPoint A point class on Curve25519, in XZ coordinates.
 --- @field [1] number[] The X coordinate.

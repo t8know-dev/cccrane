@@ -1,10 +1,10 @@
 --- The ChaCha20Poly1305AEAD authenticated encryption with associated data (AEAD) construction.
 
 local expect   = require "cc.expect".expect
-local lassert = require "ccryptolib.internal.util".lassert
-local packing  = require "ccryptolib.internal.packing"
-local chacha20 = require "ccryptolib.chacha20"
-local poly1305 = require "ccryptolib.poly1305"
+local lassert = require "ccryptolib/ccryptolib/internal.util".lassert
+local packing  = require "ccryptolib/ccryptolib/internal.packing"
+local chacha20 = require "ccryptolib/ccryptolib/chacha20"
+local poly1305 = require "ccryptolib/ccryptolib/poly1305"
 
 local p8x1, fmt8x1 = packing.compilePack("<I8")
 local u4x4, fmt4x4 = packing.compileUnpack("<I4I4I4I4")

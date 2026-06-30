@@ -1,4 +1,4 @@
-local constants = require "ecnet2.constants"
+local constants = require "ecnet/ecnet2/constants"
 
 --- The global daemon state.
 

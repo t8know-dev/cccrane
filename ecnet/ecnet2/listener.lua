@@ -1,10 +1,10 @@
-local class = require "ecnet2.class"
-local uid = require "ecnet2.uid"
-local blake3 = require "ccryptolib.blake3"
-local ecnetd = require "ecnet2.ecnetd"
-local modems = require "ecnet2.modems"
-local HandshakeState = require "ecnet2.handshake_state"
-local Connection = require "ecnet2.connection"
+local class = require "ecnet/ecnet2/class"
+local uid = require "ecnet/ecnet2/uid"
+local blake3 = require "ccryptolib/ccryptolib/blake3"
+local ecnetd = require "ecnet/ecnet2/ecnetd"
+local modems = require "ecnet/ecnet2/modems"
+local HandshakeState = require "ecnet/ecnet2/handshake_state"
+local Connection = require "ecnet/ecnet2/connection"
 
 --- A listener for incoming connection requests.
 --- @class ecnet2.Listener

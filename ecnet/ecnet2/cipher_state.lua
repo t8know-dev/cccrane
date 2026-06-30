@@ -1,6 +1,6 @@
-local class = require "ecnet2.class"
-local aead = require "ccryptolib.aead"
-local chacha = require "ccryptolib.chacha20"
+local class = require "ecnet/ecnet2/class"
+local aead = require "ccryptolib/ccryptolib/aead"
+local chacha = require "ccryptolib/ccryptolib/chacha20"
 
 --- A symmetric encryption cipher state, containing a key and a numeric nonce.
 --- @class ecnet2.CipherState

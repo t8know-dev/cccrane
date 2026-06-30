@@ -1,8 +1,8 @@
-local class = require "ecnet2.class"
-local ecnetd = require "ecnet2.ecnetd"
-local addressEncoder = require "ecnet2.address_encoder"
-local modems = require "ecnet2.modems"
-local uid = require "ecnet2.uid"
+local class = require "ecnet/ecnet2/class"
+local ecnetd = require "ecnet/ecnet2/ecnetd"
+local addressEncoder = require "ecnet/ecnet2/address_encoder"
+local modems = require "ecnet/ecnet2/modems"
+local uid = require "ecnet/ecnet2/uid"
 
 --- An encrypted tunnel operating over a modem.
 --- @class ecnet2.Connection

@@ -1,8 +1,8 @@
 --- The Poly1305 one-time authenticator.
 
 local expect  = require "cc.expect".expect
-local lassert = require "ccryptolib.internal.util".lassert
-local packing = require "ccryptolib.internal.packing"
+local lassert = require "ccryptolib/ccryptolib/internal.util".lassert
+local packing = require "ccryptolib/ccryptolib/internal.packing"
 
 local u4x4, fmt4x4 = packing.compileUnpack("<I4I4I4I4")
 local p4x4 = packing.compilePack(fmt4x4)

@@ -15,7 +15,7 @@
 dofile("/cccrane/init.lua")
 
 local ecnet2 = require "ecnet2"
-local random = require "ccryptolib.random"
+local random = require "ccryptolib/ccryptolib/random"
 random.initWithTiming()
 
 local rc = dofile("/cccrane/crane-remote-config.lua")

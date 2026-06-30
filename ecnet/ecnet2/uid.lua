@@ -3,7 +3,7 @@
 -- uniformly random. Multiple instances of the generator are safe to use and
 -- will be unique in relation to each other.
 
-local random = require "ccryptolib.random"
+local random = require "ccryptolib/ccryptolib/random"
 
 local counter, suffix
 

@@ -1,7 +1,7 @@
 --- The SHA512 cryptographic hash function.
 
 local expect  = require "cc.expect".expect
-local packing = require "ccryptolib.internal.packing"
+local packing = require "ccryptolib/ccryptolib/internal.packing"
 
 local shl = bit32.lshift
 local shr = bit32.rshift

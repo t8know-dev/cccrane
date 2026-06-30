@@ -1,6 +1,6 @@
 --- Arithmetic on Curve25519's base field.
 
-local packing = require "ccryptolib.internal.packing"
+local packing = require "ccryptolib/ccryptolib/internal.packing"
 
 local unpack = unpack or table.unpack
 local ufp, fmtfp = packing.compileUnpack("<I3I3I2I3I3I2I3I3I2I3I3I2")

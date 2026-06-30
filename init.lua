@@ -1,6 +1,7 @@
 -- init.lua — Bootstrap loader for the cccrane project
 --
--- Adds module search paths under /cccrane/ so all require() calls resolve.
+-- Adds /cccrane/ to the Lua module search path so all require() calls resolve
+-- using slash-based module names that mirror the filesystem layout.
 -- Every cccrane script starts with dofile("/cccrane/init.lua") before any require.
 --
 -- Usage from command line:
@@ -9,11 +10,11 @@
 --   e.open("top")
 --   local i = e.Identity("/.ecnet2")
 --   print(i.address)
+--
+-- Module resolution examples:
+--   require "ecnet2"                     → /cccrane/ecnet2.lua (shim → dofile into ecnet/ecnet2/init.lua)
+--   require "ecnet/ecnet2/constants"     → /cccrane/ecnet/ecnet2/constants.lua
+--   require "ccryptolib/ccryptolib/random" → /cccrane/ccryptolib/ccryptolib/random.lua
 
--- /cccrane/?.lua              → require "ecnet2"          → /cccrane/ecnet2.lua (shim)
--- /cccrane/ecnet/?.lua        → require "ecnet2.constants" → /cccrane/ecnet/ecnet2/constants.lua
--- /cccrane/ccryptolib/?.lua   → require "ccryptolib.random"→ /cccrane/ccryptolib/ccryptolib/random.lua
 package.path = package.path
     .. ";/cccrane/?.lua"
-    .. ";/cccrane/ecnet/?.lua"
-    .. ";/cccrane/ccryptolib/?.lua"

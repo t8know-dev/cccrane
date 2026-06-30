@@ -1,11 +1,11 @@
-local class = require "ecnet2.class"
+local class = require "ecnet/ecnet2/class"
 local expect = require "cc.expect"
-local HandshakeState = require "ecnet2.handshake_state"
-local addressEncoder = require "ecnet2.address_encoder"
-local blake3 = require "ccryptolib.blake3"
-local Connection = require "ecnet2.connection"
-local Listener = require "ecnet2.listener"
-local modems = require "ecnet2.modems"
+local HandshakeState = require "ecnet/ecnet2/handshake_state"
+local addressEncoder = require "ecnet/ecnet2/address_encoder"
+local blake3 = require "ccryptolib/ccryptolib/blake3"
+local Connection = require "ecnet/ecnet2/connection"
+local Listener = require "ecnet/ecnet2/listener"
+local modems = require "ecnet/ecnet2/modems"
 
 --- A namespace for interpreting messages received over connections.
 --- @class ecnet2.Protocol
