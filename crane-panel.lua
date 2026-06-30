@@ -13,7 +13,7 @@ local ecnet2 = require "ecnet2"
 local random = require "ccryptolib.random"
 random.initWithTiming()
 
-local panelUI = require("panel_ui")
+local PanelUI = require("panel_ui")
 
 ------------------------------------------------------------
 -- STATE
@@ -66,6 +66,12 @@ local proto = id:Protocol {
 local listener = proto:listen()
 
 ------------------------------------------------------------
+-- UI INSTANCE (created early, callbacks filled below)
+------------------------------------------------------------
+
+local ui = PanelUI.create({ callbacks = {} })
+
+------------------------------------------------------------
 -- HELPERS
 ------------------------------------------------------------
 
@@ -87,7 +93,7 @@ end
 --- @param params table|nil command parameters
 local function sendCommand(command, params)
     if not panelState.connection then
-        panelUI:addLogLine(timestamp() .. " Cannot send: not connected", colors.red)
+        ui:addLogLine(timestamp() .. " Cannot send: not connected", colors.red)
         return
     end
 
@@ -105,20 +111,20 @@ local function sendCommand(command, params)
         },
     }
 
-    panelUI:addLogLine(timestamp() .. " Sending: " .. command)
-    panelUI:showLoading(true)
+    ui:addLogLine(timestamp() .. " Sending: " .. command)
+    ui:showLoading(true)
     local ok = pcall(panelState.connection.send, panelState.connection, msg)
     if not ok then
-        panelUI:addLogLine("SEND FAILED — connection lost", colors.red)
+        ui:addLogLine("SEND FAILED — connection lost", colors.red)
         panelState.connection = nil
         panelState.connected = false
         panelState.registered = false
         panelState.pending = false
     end
 
-    panelUI:setPending(panelState.pending)
-    panelUI:setConnected(panelState.connected, nil)
-    panelUI:setRegistered(panelState.registered)
+    ui:setPending(panelState.pending)
+    ui:setConnected(panelState.connected, nil)
+    ui:setRegistered(panelState.registered)
 end
 
 ------------------------------------------------------------
@@ -137,7 +143,7 @@ local function handleMessage(msg)
     if body.message_type == "REGISTER" then
         panelState.craneId = body.crane_id or "?"
         panelState.registered = true
-        panelUI:addLogLine(timestamp() .. " Registered: crane " .. panelState.craneId, colors.green)
+        ui:addLogLine(timestamp() .. " Registered: crane " .. panelState.craneId, colors.green)
 
         -- Handshake complete — start keepalive
         panelState.keepAliveTimer = os.startTimer(KEEPALIVE_INTERVAL)
@@ -149,23 +155,23 @@ local function handleMessage(msg)
                 type = "request",
                 body = { message_type = "CONFIG_QUERY" },
             })
-            panelUI:addLogLine(timestamp() .. " Sent config query", colors.lightGray)
+            ui:addLogLine(timestamp() .. " Sent config query", colors.lightGray)
         end
 
-        panelUI:setRegistered(true)
-        panelUI:setConnected(true, panelState.craneId)
+        ui:setRegistered(true)
+        ui:setConnected(true, panelState.craneId)
 
     elseif body.message_type == "ACK" then
         panelState.pending = false
         local ackStatus = body.status or "?"
         local ackMsg = body.message or ""
         if ackStatus == "ok" then
-            panelUI:addLogLine(timestamp() .. "  " .. body.command_seq .. " OK", colors.green)
+            ui:addLogLine(timestamp() .. "  " .. body.command_seq .. " OK", colors.green)
         else
-            panelUI:addLogLine(timestamp() .. "  " .. body.command_seq .. " ERROR: " .. ackMsg, colors.red)
+            ui:addLogLine(timestamp() .. "  " .. body.command_seq .. " ERROR: " .. ackMsg, colors.red)
         end
-        panelUI:setPending(false)
-        panelUI:showLoading(false)
+        ui:setPending(false)
+        ui:showLoading(false)
 
     elseif body.message_type == "STATUS" then
         local st = body.status or {}
@@ -178,7 +184,7 @@ local function handleMessage(msg)
         panelState.craneError = st.error == true
         panelState.craneErrorMsg = st.error_msg or ""
 
-        panelUI:setCraneStatus({
+        ui:setCraneStatus({
             pos = panelState.cranePos,
             sticker = panelState.craneSticker,
             busy = panelState.craneBusy,
@@ -188,8 +194,8 @@ local function handleMessage(msg)
 
     elseif body.message_type == "CONFIG_RESPONSE" then
         local cfg = body.config or {}
-        panelUI:setGridSize(cfg.max_x or 100, cfg.max_y or 100)
-        panelUI:addLogLine(timestamp() .. " Config: " .. (cfg.max_x or "?")
+        ui:setGridSize(cfg.max_x or 100, cfg.max_y or 100)
+        ui:addLogLine(timestamp() .. " Config: " .. (cfg.max_x or "?")
             .. "x" .. (cfg.max_y or "?") .. " grid", colors.yellow)
     end
 end
@@ -198,19 +204,20 @@ end
 -- CALLBACKS
 ------------------------------------------------------------
 
-local function onCommand(action, params)
+-- Wire up the real callbacks that close over `ui` and panelState
+ui._callbacks.onCommand = function(action, params)
     if action == "__ERROR" then
-        panelUI:addLogLine(timestamp() .. " " .. tostring(params), colors.red)
+        ui:addLogLine(timestamp() .. " " .. tostring(params), colors.red)
         return
     end
     sendCommand(action, params)
 end
 
-local function onConnectionRequest(request)
+ui._callbacks.onConnectionRequest = function(request)
     if panelState.connection then
         -- Already have a crane — reject
         local dummy = listener:accept("busy", request)
-        panelUI:addLogLine(timestamp() .. " Rejected extra connection", colors.yellow)
+        ui:addLogLine(timestamp() .. " Rejected extra connection", colors.yellow)
     else
         local conn = listener:accept("crane_panel_v1.0", request)
         panelState.connection = conn
@@ -220,34 +227,34 @@ local function onConnectionRequest(request)
         panelState.pendingConfigQuery = true
         panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
 
-        panelUI:addLogLine(timestamp() .. " Crane connecting...", colors.yellow)
-        panelUI:setConnected(true, nil)
-        panelUI:setPending(false)
-        panelUI:setRegistered(false)
+        ui:addLogLine(timestamp() .. " Crane connecting...", colors.yellow)
+        ui:setConnected(true, nil)
+        ui:setPending(false)
+        ui:setRegistered(false)
     end
 end
 
-local function onMessage(cid, msg)
+ui._callbacks.onMessage = function(cid, msg)
     -- Only process messages from the active connection
     if not panelState.connection or cid ~= panelState.connection.id then return end
     handleMessage(msg)
 end
 
-local function onTimer(timerId)
+ui._callbacks.onTimer = function(timerId)
     -- Watchdog: check for connection timeout
     if timerId == panelState.watchdogTimer and panelState.connected then
         local now = os.epoch("utc")
         local elapsed = (now - (panelState.lastMessageTime or now)) / 1000
         if elapsed >= CONNECTION_TIMEOUT then
-            panelUI:addLogLine(timestamp() .. " Crane disconnected (timeout)", colors.red)
+            ui:addLogLine(timestamp() .. " Crane disconnected (timeout)", colors.red)
             panelState.connection = nil
             panelState.connected = false
             panelState.registered = false
             panelState.craneId = "?"
             panelState.keepAliveTimer = nil
-            panelUI:setConnected(false, nil)
-            panelUI:setRegistered(false)
-            panelUI:setPending(false)
+            ui:setConnected(false, nil)
+            ui:setRegistered(false)
+            ui:setPending(false)
         else
             -- Restart watchdog
             panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
@@ -282,18 +289,6 @@ print("=== Crane Control Panel ===")
 print("ECNet2 address: " .. (id.address or "unknown"))
 print("Copy this address to crane-remote-config.lua on the crane.")
 print("Waiting for connection...")
-
--- Wire up UI callbacks
--- (panelUI.create already called; but we create it here so it can
---  reference listener and panelState closures)
-local ui = panelUI.create({
-    callbacks = {
-        onCommand           = onCommand,
-        onConnectionRequest = onConnectionRequest,
-        onMessage           = onMessage,
-        onTimer             = onTimer,
-    },
-})
 
 -- Show initial log lines
 ui:addLogLine(timestamp() .. " Panel started — waiting for crane...", colors.yellow)
