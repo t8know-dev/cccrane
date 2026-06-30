@@ -1,4 +1,4 @@
--- crane-panel.lua — Crane control panel (ECNet2 server)
+-- crane-panel.lua — v1 Crane control panel (ECNet2 server)
 --
 -- Full-screen terminal GUI for remotely controlling a crane via ECNet2.
 -- Displays source/destination position fields, command buttons, crane status,
@@ -107,7 +107,6 @@ local panelState = {
     -- Handshake completion
     pendingConfigQuery = false,  -- true if CONFIG_QUERY needs to be sent after handshake
     registered         = false,  -- true once REGISTER received (handshake fully done)
-    handshakeTimer     = nil,    -- timer ID for handshake completion timeout
 }
 
 local CONNECTION_TIMEOUT = 15  -- seconds without message = disconnected
@@ -432,11 +431,7 @@ local function handleMessage(msg)
         panelState.registered = true
         addLog(timestamp() .. " Registered: crane " .. panelState.craneId, colors.green)
 
-        -- Handshake complete — cancel the timeout timer and start keepalive
-        if panelState.handshakeTimer then
-            os.cancelTimer(panelState.handshakeTimer)
-            panelState.handshakeTimer = nil
-        end
+        -- Handshake complete — start keepalive
         panelState.keepAliveTimer = os.startTimer(KEEPALIVE_INTERVAL)
 
         -- Send deferred CONFIG_QUERY now that the handshake is complete
@@ -619,19 +614,9 @@ local function mainLoop()
                 panelState.pendingConfigQuery = true
                 panelState.lastMessageTime = os.epoch("utc")
                 panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
-                panelState.handshakeTimer = os.startTimer(5)  -- timeout for handshake completion
 
                 addLog(timestamp() .. " Crane connecting...", colors.yellow)
             end
-            quickRedraw()
-
-        elseif event == "timer" and id == panelState.handshakeTimer then
-            -- Handshake did not complete in time — connection failed
-            addLog(timestamp() .. " Handshake timeout — connection failed", colors.red)
-            panelState.connection = nil
-            panelState.connected = false
-            panelState.registered = false
-            panelState.handshakeTimer = nil
             quickRedraw()
 
         elseif event == "timer" and panelState.connected and id == panelState.watchdogTimer then
