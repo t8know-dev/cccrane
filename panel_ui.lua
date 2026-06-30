@@ -389,7 +389,7 @@ function PanelUI:_buildButtons()
     local runBtn = a:createButton({
         x = 2, y = L.BUTTONS,
         width = 7, height = 1,
-        label = "  RUN  ",
+        label = "RUN",
         bg = C.bgBtn, fg = C.fgWhite,
         border = { color = C.border },
     })
@@ -402,7 +402,7 @@ function PanelUI:_buildButtons()
     local gotoBtn = a:createButton({
         x = 10, y = L.BUTTONS,
         width = 8, height = 1,
-        label = "  GOTO  ",
+        label = "GOTO",
         bg = C.bgBtn, fg = C.fgWhite,
         border = { color = C.border },
     })
@@ -415,7 +415,7 @@ function PanelUI:_buildButtons()
     local homeBtn = a:createButton({
         x = 19, y = L.BUTTONS,
         width = 8, height = 1,
-        label = "  HOME  ",
+        label = "HOME",
         bg = C.bgBtn, fg = C.fgWhite,
         border = { color = C.border },
     })
@@ -428,7 +428,7 @@ function PanelUI:_buildButtons()
     local emrgBtn = a:createButton({
         x = self._termW - 12, y = L.BUTTONS,
         width = 11, height = 1,
-        label = "  EMRG  ",
+        label = "EMRG",
         bg = C.bgEmrg, fg = C.fgWhite,
         border = { color = C.fgOrange },
     })
