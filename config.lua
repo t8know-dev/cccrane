@@ -31,11 +31,11 @@ return {
 
     -- Peripheral names (as seen by peripheral.wrap)
     GEAR_PERIPHERAL = "right",
-    RELAY_PERIPHERAL = "bottom",
+    RELAY_PERIPHERAL = "left",
 
     -- Redstone relay output sides (on the relay block)
-    AXIS_SIDE = "back",
-    LIFT_SIDE = "left",
+    AXIS_SIDE = "top",
+    LIFT_SIDE = "front",
     STICKER_SIDE = "bottom",
 
     -- Axis polarity: set INVERSE_X or INVERSE_Y to true if the respective
