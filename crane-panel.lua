@@ -628,10 +628,20 @@ end
 -- STARTUP
 ------------------------------------------------------------
 
+-- Save panel address to file for easy retrieval
+local addrFile = fs.open("panel_address.txt", "w")
+if addrFile then
+    addrFile.writeLine("=== Crane Control Panel ===")
+    addrFile.writeLine("ECNet2 address: " .. (id.address or "unknown"))
+    addrFile.writeLine("Copy this address to crane-remote-config.lua on the crane.")
+    addrFile.close()
+end
+
 print("=== Crane Control Panel ===")
 print("ECNet2 address: " .. (id.address or "unknown"))
 print("Copy this address to crane-remote-config.lua on the crane.")
 print("Waiting for connection...")
+
 
 parallel.waitForAny(mainLoop, ecnet2.daemon)
 
