@@ -105,20 +105,23 @@ end
 -- ── Layout Calculator ────────────────────────────────────────────
 
 function PanelUI:_calcLayout()
-    local H = self._termH
-    -- 1=header, 2=sep, 3-4=source+dest, 5=progress, 6=buttons, 7-8=status, 9+=log
+    -- 1=header, 2=sep, 3-5=source+dest(3 rows w/ padding),
+    -- 6=progress, 7=gap, 8-10=buttons(3 rows tall),
+    -- 11=gap, 12-13=status(2 rows), 14+=log
     self._L = {
         HEADER    = 1,
         SEP1      = 2,
-        INPUTS    = 3,
-        INPUT_END = 4,
-        PROGRESS  = 5,
-        BUTTONS   = 6,
-        STATUS    = 7,
-        STATUS_END= 8,
-        LOG_START = 9,
+        INPUTS    = 3,     -- Source/Dest frame start (3 rows: title + pad + fields)
+        INPUT_END = 5,
+        PROGRESS  = 6,
+        GAP_BTN   = 7,
+        BUTTONS   = 8,     -- 3 rows tall (rows 8,9,10)
+        GAP_BTN2  = 11,
+        STATUS    = 12,
+        STATUS_END= 13,
+        LOG_START = 14,
     }
-    self._logRows = math.max(1, H - self._L.LOG_START + 1)
+    self._logRows = 6  -- fixed 6 log lines (frame = 7 rows)
 end
 
 -- ── Widget Builders ──────────────────────────────────────────────
@@ -140,7 +143,7 @@ function PanelUI:_buildHeader()
         x = 1, y = L.HEADER,
         width = 3,
         height = 1,
-        text = "  ●",
+        text = "  @",
         bg = C.bgDark,
         fg = C.fgRed,
     })
@@ -186,7 +189,7 @@ function PanelUI:_buildSourcePanel()
     local W = self._termW
 
     local panW = math.floor((W - 3) / 2)  -- left half minus gap
-    local height = 2
+    local height = 3                      -- 1 title + 1 pad + 1 fields
 
     self._sourceFrame = a:createFrame({
         x = 1, y = L.INPUTS,
@@ -207,9 +210,9 @@ function PanelUI:_buildSourcePanel()
     })
     r:addChild(self._sourceTitle)
 
-    -- X field
+    -- X field (padded down by 1)
     local lblX = a:createLabel({
-        x = 2, y = L.INPUTS + 1,
+        x = 2, y = L.INPUTS + 2,
         width = 2,
         height = 1,
         text = "X:",
@@ -219,7 +222,7 @@ function PanelUI:_buildSourcePanel()
     r:addChild(lblX)
 
     local tbSrcX = a:createTextBox({
-        x = 4, y = L.INPUTS + 1,
+        x = 4, y = L.INPUTS + 2,
         width = 5, height = 1,
         numericOnly = true, maxLength = 5,
         placeholder = "     ", placeholderColor = C.border,
@@ -228,9 +231,9 @@ function PanelUI:_buildSourcePanel()
     })
     r:addChild(tbSrcX)
 
-    -- Y field
+    -- Y field (padded down by 1)
     local lblY = a:createLabel({
-        x = 12, y = L.INPUTS + 1,
+        x = 12, y = L.INPUTS + 2,
         width = 2,
         height = 1,
         text = "Y:",
@@ -240,7 +243,7 @@ function PanelUI:_buildSourcePanel()
     r:addChild(lblY)
 
     local tbSrcY = a:createTextBox({
-        x = 14, y = L.INPUTS + 1,
+        x = 14, y = L.INPUTS + 2,
         width = 5, height = 1,
         numericOnly = true, maxLength = 5,
         placeholder = "     ", placeholderColor = C.border,
@@ -249,9 +252,9 @@ function PanelUI:_buildSourcePanel()
     })
     r:addChild(tbSrcY)
 
-    -- Current position preview
+    -- Current position preview (padded down by 1)
     self._srcPreview = a:createLabel({
-        x = 22, y = L.INPUTS + 1,
+        x = 22, y = L.INPUTS + 2,
         width = panW - 23,
         height = 1,
         text = "crn: (—, —)",
@@ -273,7 +276,7 @@ function PanelUI:_buildDestPanel()
 
     local panW = math.floor((W - 3) / 2)
     local panX = W - panW
-    local height = 2
+    local height = 3                      -- 1 title + 1 pad + 1 fields
 
     self._destFrame = a:createFrame({
         x = panX, y = L.INPUTS,
@@ -294,9 +297,9 @@ function PanelUI:_buildDestPanel()
     })
     r:addChild(self._destTitle)
 
-    -- X field
+    -- X field (padded down by 1)
     local lblX = a:createLabel({
-        x = panX + 2, y = L.INPUTS + 1,
+        x = panX + 2, y = L.INPUTS + 2,
         width = 2,
         height = 1,
         text = "X:",
@@ -306,7 +309,7 @@ function PanelUI:_buildDestPanel()
     r:addChild(lblX)
 
     local tbDstX = a:createTextBox({
-        x = panX + 4, y = L.INPUTS + 1,
+        x = panX + 4, y = L.INPUTS + 2,
         width = 5, height = 1,
         numericOnly = true, maxLength = 5,
         placeholder = "     ", placeholderColor = C.border,
@@ -315,9 +318,9 @@ function PanelUI:_buildDestPanel()
     })
     r:addChild(tbDstX)
 
-    -- Y field
+    -- Y field (padded down by 1)
     local lblY = a:createLabel({
-        x = panX + 12, y = L.INPUTS + 1,
+        x = panX + 12, y = L.INPUTS + 2,
         width = 2,
         height = 1,
         text = "Y:",
@@ -327,7 +330,7 @@ function PanelUI:_buildDestPanel()
     r:addChild(lblY)
 
     local tbDstY = a:createTextBox({
-        x = panX + 14, y = L.INPUTS + 1,
+        x = panX + 14, y = L.INPUTS + 2,
         width = 5, height = 1,
         numericOnly = true, maxLength = 5,
         placeholder = "     ", placeholderColor = C.border,
@@ -336,9 +339,9 @@ function PanelUI:_buildDestPanel()
     })
     r:addChild(tbDstY)
 
-    -- Current position preview
+    -- Current position preview (padded down by 1)
     self._dstPreview = a:createLabel({
-        x = panX + 22, y = L.INPUTS + 1,
+        x = panX + 22, y = L.INPUTS + 2,
         width = panW - 23,
         height = 1,
         text = "crn: (—, —)",
@@ -384,8 +387,8 @@ function PanelUI:_buildButtons()
     -- RUN
     local runBtn = a:createButton({
         x = 2, y = L.BUTTONS,
-        width = 7, height = 1,
-        label = "  RUN  ",
+        width = 7, height = 3,
+        label = "\n  RUN  ",
         bg = C.bgBtn, fg = C.fgWhite,
         border = { color = C.border },
     })
@@ -397,8 +400,8 @@ function PanelUI:_buildButtons()
     -- GOTO
     local gotoBtn = a:createButton({
         x = 10, y = L.BUTTONS,
-        width = 8, height = 1,
-        label = "  GOTO  ",
+        width = 8, height = 3,
+        label = "\n  GOTO  ",
         bg = C.bgBtn, fg = C.fgWhite,
         border = { color = C.border },
     })
@@ -410,8 +413,8 @@ function PanelUI:_buildButtons()
     -- HOME
     local homeBtn = a:createButton({
         x = 19, y = L.BUTTONS,
-        width = 8, height = 1,
-        label = "  HOME  ",
+        width = 8, height = 3,
+        label = "\n  HOME  ",
         bg = C.bgBtn, fg = C.fgWhite,
         border = { color = C.border },
     })
@@ -423,8 +426,8 @@ function PanelUI:_buildButtons()
     -- EMRG STOP (right aligned, wider, red)
     local emrgBtn = a:createButton({
         x = self._termW - 12, y = L.BUTTONS,
-        width = 11, height = 1,
-        label = "  EMRG  ",
+        width = 11, height = 3,
+        label = "\n  EMRG  ",
         bg = C.bgEmrg, fg = C.fgWhite,
         border = { color = C.fgOrange },
     })
@@ -464,7 +467,7 @@ function PanelUI:_buildStatusFrame()
         x = 2, y = L.STATUS + 1,
         width = 2,
         height = 1,
-        text = "●",
+        text = "@",
         bg = C.bgPanel,
         fg = C.ok,
     })
@@ -489,7 +492,7 @@ function PanelUI:_buildLogArea()
     self._logFrame = a:createFrame({
         x = 1, y = L.LOG_START,
         width = W - 1,
-        height = self._logRows,
+        height = self._logRows + 1,
         bg = C.bgDark,
         border = { color = C.border },
     })
@@ -505,9 +508,9 @@ function PanelUI:_buildLogArea()
     })
     r:addChild(self._logTitle)
 
-    -- Pre-allocated log line widgets (inside frame area, offset by 1)
+    -- Pre-allocated log line widgets (inside frame area)
     self._logWidgets = {}
-    for row = 0, self._logRows - 2 do
+    for row = 0, self._logRows - 1 do
         local lw = a:createLabel({
             x = 2,
             y = L.LOG_START + 1 + row,
@@ -599,29 +602,6 @@ function PanelUI:_onResize()
 
     self:_calcLayout()
     local L = self._L
-    local newRows = math.max(1, H - L.LOG_START + 1)
-    if newRows ~= self._logRows then
-        for _, w in ipairs(self._logWidgets) do w.visible = false end
-        self._logWidgets = {}
-        self._logRows = newRows
-        for row = 0, self._logRows - 2 do
-            local lw = self._app:createLabel({
-                x = 2,
-                y = L.LOG_START + 1 + row,
-                width = W - 4,
-                height = 1,
-                text = "",
-                bg = C.bgDark,
-                fg = C.bgDark,
-            })
-            self._root:addChild(lw)
-            self._logWidgets[row + 1] = lw
-        end
-        if self._logFrame then
-            self._logFrame:setSize(W - 1, self._logRows)
-        end
-        self:_refreshLog()
-    end
 
     if self._headerId then
         self._headerId:setPosition(W - 14, L.HEADER)
@@ -634,6 +614,30 @@ function PanelUI:_onResize()
 
     if self._progressBar then
         self._progressBar:setSize(W - 1, 1)
+    end
+
+    -- Resize log frame (6 lines + 1 for title = 7)
+    if self._logFrame then
+        self._logFrame:setSize(W - 1, self._logRows + 1)
+    end
+    -- Rebuild log widgets if needed
+    if #self._logWidgets ~= self._logRows then
+        for _, w in ipairs(self._logWidgets) do w.visible = false end
+        self._logWidgets = {}
+        for row = 0, self._logRows - 1 do
+            local lw = self._app:createLabel({
+                x = 2,
+                y = L.LOG_START + 1 + row,
+                width = W - 4,
+                height = 1,
+                text = "",
+                bg = C.bgDark,
+                fg = C.bgDark,
+            })
+            self._root:addChild(lw)
+            self._logWidgets[row + 1] = lw
+        end
+        self:_refreshLog()
     end
 end
 
@@ -786,7 +790,7 @@ end
 function PanelUI:_redrawHeader()
     local connected = self._state.connected and self._state.registered
     self._headerDot.fg = connected and C.ok or C.fgRed
-    self._headerDot:setText("  ●")
+    self._headerDot:setText("  @")
     self._headerStatus:setText(connected and "CONNECTED" or "DISCONNECTED")
     self._headerStatus.fg = connected and C.ok or C.fgGray
     self._headerId:setText(connected and ("[" .. self._state.craneId .. "]") or "")
