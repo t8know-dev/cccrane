@@ -1,4 +1,4 @@
--- crane-panel.lua — v14 Crane control panel (ECNet2 server)
+-- crane-panel.lua — v13 Crane control panel (ECNet2 server)
 --
 -- Full-screen terminal GUI for remotely controlling a crane via ECNet2.
 -- Displays source/destination position fields, command buttons, crane status,
