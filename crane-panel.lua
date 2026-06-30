@@ -1,4 +1,4 @@
--- crane-panel.lua — v1 Crane control panel (ECNet2 server)
+-- crane-panel.lua — v2 Crane control panel (ECNet2 server)
 --
 -- Full-screen terminal GUI for remotely controlling a crane via ECNet2.
 -- Displays source/destination position fields, command buttons, crane status,
@@ -612,7 +612,6 @@ local function mainLoop()
                 panelState.pending = false
                 panelState.registered = false
                 panelState.pendingConfigQuery = true
-                panelState.lastMessageTime = os.epoch("utc")
                 panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
 
                 addLog(timestamp() .. " Crane connecting...", colors.yellow)

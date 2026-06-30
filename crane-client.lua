@@ -39,36 +39,6 @@ local lastMessageTime = os.epoch("utc")  -- time of last received message (watch
 -- CONNECTION HELPERS
 ------------------------------------------------------------
 
---- Try to connect to the panel. Keeps trying with exponential backoff.
---- @return table connection
-local function connectToPanel()
-    local backoff = rc.RECONNECT_BACKOFF_INITIAL
-    while true do
-        local ok, c = pcall(proto.connect, proto, rc.PANEL_ADDRESS, "top")
-        if ok then
-            local ok2, greeting = pcall(c.receive, c)
-            if ok2 and greeting then
-                print("Connected: " .. tostring(select(2, greeting)))
-                local ok3 = pcall(c.send, c, {
-                    type = "request",
-                    body = {
-                        message_type = "REGISTER",
-                        crane_id = tostring(os.getComputerID()),
-                        version = "1.0",
-                    }
-                })
-                if ok3 then
-                    lastMessageTime = os.epoch("utc")
-                    return c
-                end
-            end
-        end
-        print("Reconnect in " .. backoff .. "s...")
-        sleep(math.min(backoff, 5))
-        backoff = math.min(backoff * rc.RECONNECT_BACKOFF_MULT, rc.RECONNECT_BACKOFF_MAX)
-    end
-end
-
 --- Send a message with error handling. On failure, marks conn as nil and
 --- starts reconnect on next main-loop iteration.
 --- @param msg table
@@ -100,6 +70,8 @@ local function sendStatus()
 end
 
 --- Try to re-establish connection. Blocks until connected.
+--- Must be called inside the parallel.waitForAny with ecnet2.daemon
+--- so Connection:receive() can receive ecnet2_message events.
 local function tryReconnect()
     print("Attempting reconnect...")
     local backoff = rc.RECONNECT_BACKOFF_INITIAL
@@ -315,11 +287,7 @@ end
 print("Crane client starting...")
 crane.init()
 
--- Set timer BEFORE connecting so the first heartbeat catches the connect
-heartbeatTimer = os.startTimer(1)
-
-conn = connectToPanel()
-print("Crane client ready, listening for commands.")
+print("Starting connection loop...")
 
 parallel.waitForAny(mainLoop, msgRouter, ecnet2.daemon)
 
