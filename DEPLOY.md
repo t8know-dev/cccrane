@@ -19,34 +19,51 @@ Po klonowaniu struktura na komputerze wygląda tak:
 
 ```
 /cccrane/
-├── crane-panel.lua              ← panel sterowania (komputer PANEL)
-├── crane-client.lua             ← klient żurawia (komputer ŻURAW)
-├── crane-lib.lua                ← biblioteka sterowania żurawiem
-├── crane.lua                    ← CLI wrapper (tryb standalone)
-├── crane-remote-config.lua      ← konfiguracja zdalna (komputer ŻURAW)
-├── config.lua                   ← konfiguracja żurawia
-├── DEPLOY.md                    ← ta instrukcja
-├── README.md
-├── CLAUDE.md
-├── ecnet/                       ← framework ECNet2 (submoduł)
+├── init.lua                    ← bootstrap (package.path) — każdy skrypt
+├── ecnet2.lua                  ← shim: require("ecnet2") → framework
+├── crane-panel.lua             ← panel sterowania (komputer PANEL)
+├── crane-client.lua            ← klient żurawia (komputer ŻURAW)
+├── crane-lib.lua               ← biblioteka sterowania żurawiem
+├── crane.lua                   ← CLI wrapper (tryb standalone)
+├── crane-remote-config.lua     ← konfiguracja zdalna (komputer ŻURAW)
+├── config.lua                  ← konfiguracja żurawia
+├── ecnet/                      ← framework ECNet2
 │   └── ecnet2/
 │       ├── init.lua
 │       ├── identity.lua
 │       ├── connection.lua
 │       ├── protocol.lua
 │       ├── listener.lua
-│       └── ...
-├── ccryptolib/                  ← biblioteka kryptograficzna (submoduł)
+│       ├── handshake_state.lua
+│       ├── symmetric_state.lua
+│       ├── cipher_state.lua
+│       ├── ecnetd.lua
+│       ├── modems.lua
+│       ├── class.lua
+│       ├── uid.lua
+│       ├── constants.lua
+│       └── address_encoder.lua
+├── ccryptolib/                 ← biblioteka kryptograficzna
 │   └── ccryptolib/
 │       ├── random.lua
 │       ├── blake3.lua
 │       ├── chacha20.lua
 │       ├── poly1305.lua
-│       ├── ed25519.lua
+│       ├── aead.lua
 │       ├── x25519.lua
+│       ├── x25519c.lua
 │       └── internal/
 │           ├── util.lua
-│           └── ...
+│           ├── packing.lua
+│           ├── sha512.lua
+│           ├── fp.lua
+│           ├── fq.lua
+│           ├── mp.lua
+│           ├── curve25519.lua
+│           └── edwards25519.lua
+├── DEPLOY.md
+├── README.md
+└── CLAUDE.md
 ```
 
 **Uwaga**: Jeśli nie masz dostępu do `git clone` na komputerze CC, pobierz pojedyncze pliki za pomocą `wget` (patrz niżej).
@@ -59,7 +76,13 @@ Jeśli `git clone` nie jest dostępne, pobierz pliki ręcznie:
 ```
 mkdir /cccrane
 
+# Bootstrap
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/init.lua /cccrane/init.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet2.lua /cccrane/ecnet2.lua
+
 wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/crane-panel.lua /cccrane/crane-panel.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/init.lua /cccrane/init.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet2.lua /cccrane/ecnet2.lua
 
 # Framework ECNet2
 wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ecnet/ecnet2/init.lua /cccrane/ecnet/ecnet2/init.lua
@@ -82,12 +105,9 @@ wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccrypto
 wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/blake3.lua /cccrane/ccryptolib/ccryptolib/blake3.lua
 wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/chacha20.lua /cccrane/ccryptolib/ccryptolib/chacha20.lua
 wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/poly1305.lua /cccrane/ccryptolib/ccryptolib/poly1305.lua
-wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/util.lua /cccrane/ccryptolib/ccryptolib/util.lua
-wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/ed25519.lua /cccrane/ccryptolib/ccryptolib/ed25519.lua
+wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/aead.lua /cccrane/ccryptolib/ccryptolib/aead.lua
 wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/x25519.lua /cccrane/ccryptolib/ccryptolib/x25519.lua
 wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/x25519c.lua /cccrane/ccryptolib/ccryptolib/x25519c.lua
-wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/sha256.lua /cccrane/ccryptolib/ccryptolib/sha256.lua
-wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/aead.lua /cccrane/ccryptolib/ccryptolib/aead.lua
 wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/util.lua /cccrane/ccryptolib/ccryptolib/internal/util.lua
 wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/packing.lua /cccrane/ccryptolib/ccryptolib/internal/packing.lua
 wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/ccryptolib/ccryptolib/internal/sha512.lua /cccrane/ccryptolib/ccryptolib/internal/sha512.lua
@@ -114,7 +134,7 @@ wget https://raw.githubusercontent.com/TWOJ_USER/cccrane/main/crane-remote-confi
 Przy pierwszym uruchomieniu ECNet2 automatycznie utworzy plik tożsamości w `/.ecnet2`. Możesz też wywołać ręcznie:
 
 ```
-lua -e "local e=require'ecnet2' e.open('top') local i=e.Identity('/.ecnet2') print('ID:', i.address) e.close()"
+lua -e "dofile('/cccrane/init.lua') local e=require'ecnet2' e.open('top') local i=e.Identity('/.ecnet2') print('ID:', i.address) e.close()"
 ```
 
 ### Krok 2: Uruchom panel

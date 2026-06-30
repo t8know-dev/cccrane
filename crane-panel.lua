@@ -9,12 +9,8 @@
 -- The panel's ECNet2 address is printed on startup — copy it to
 -- crane-remote-config.lua on the crane computer.
 
--- Add framework paths so require("ecnet2") and require("ccryptolib.*") resolve
-package.path = package.path
-    .. ";/cccrane/ecnet/?.lua"
-    .. ";/cccrane/ecnet/?/init.lua"
-    .. ";/cccrane/ccryptolib/?.lua"
-    .. ";/cccrane/ccryptolib/?/init.lua"
+-- Bootstrap: set up package.path for ecnet2 and ccryptolib
+dofile("/cccrane/init.lua")
 
 local ecnet2 = require "ecnet2"
 local random = require "ccryptolib.random"
@@ -639,6 +635,13 @@ print("=== Crane Control Panel ===")
 print("ECNet2 address: " .. (id.address or "unknown"))
 print("Copy this address to crane-remote-config.lua on the crane.")
 print("Waiting for connection...")
+
+-- Write address to file so it can be read by other programs
+local addrFile = io.open("/cccrane/panel-address.txt", "w")
+if addrFile then
+    addrFile:write(id.address or "unknown")
+    addrFile:close()
+end
 
 parallel.waitForAny(mainLoop, ecnet2.daemon)
 

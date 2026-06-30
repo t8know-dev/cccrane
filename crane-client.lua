@@ -11,12 +11,8 @@
 --   ecnet/                   (ECNet2 networking framework)
 --   ccryptolib/              (crypto primitives for ECNet2)
 
--- Add framework paths so require("ecnet2") and require("ccryptolib.*") resolve
-package.path = package.path
-    .. ";/cccrane/ecnet/?.lua"
-    .. ";/cccrane/ecnet/?/init.lua"
-    .. ";/cccrane/ccryptolib/?.lua"
-    .. ";/cccrane/ccryptolib/?/init.lua"
+-- Bootstrap: set up package.path for ecnet2 and ccryptolib
+dofile("/cccrane/init.lua")
 
 local ecnet2 = require "ecnet2"
 local random = require "ccryptolib.random"
