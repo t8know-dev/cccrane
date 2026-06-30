@@ -86,7 +86,6 @@ function PanelUI.create(opts)
     self:_buildHeader()
     self:_buildSourcePanel()
     self:_buildDestPanel()
-    self:_buildPreviewLine()
     self:_buildButtons()
     self:_buildStatusFrame()
     self:_buildLogArea()
@@ -106,24 +105,22 @@ end
 
 function PanelUI:_calcLayout()
     -- 1=header, 2=sep, 3-4=source+dest(2 rows: title, fields),
-    -- 5=preview(standalone), 7=gap,
-    -- 9=buttons(1 row), 10=gap, 11-12=status(2 rows),
-    -- 13=gap, 15+=log(4 lines)
+    -- 6=buttons(1 row), 7=gap, 8-9=status(2 rows),
+    -- 10=gap, 12+=log(6 lines)
     self._L = {
         HEADER    = 1,
         SEP1      = 2,
         INPUTS    = 3,     -- Source/Dest frame start
-        INPUT_END = 5,     -- frame end (2 rows)
-        PREVIEW   = 6,     -- standalone crane preview line
-        GAP_BTN   = 7,
-        BUTTONS   = 8,     -- 1 row
-        GAP_BTN2  = 9,
-        STATUS    = 10,
-        STATUS_END= 12,
-        GAP_LOG   = 13,
-        LOG_START = 14,
+        INPUT_END = 4,     -- frame end (2 rows)
+        GAP_BTN   = 5,
+        BUTTONS   = 6,     -- 1 row
+        GAP_BTN2  = 7,
+        STATUS    = 8,
+        STATUS_END= 9,
+        GAP_LOG   = 10,
+        LOG_START = 12,
     }
-    self._logRows = 4  -- fixed 4 log lines (frame = 5 rows)
+    self._logRows = 6  -- fixed 6 log lines (frame = 7 rows)
 end
 
 -- ── Widget Builders ──────────────────────────────────────────────
@@ -332,21 +329,6 @@ function PanelUI:_buildDestPanel()
 
     self._fields.dst_x = { tb = tbDstX, label = lblX }
     self._fields.dst_y = { tb = tbDstY, label = lblY }
-end
-
-function PanelUI:_buildPreviewLine()
-    local a, r = self._app, self._root
-    local W = self._termW
-    local L = self._L
-    self._previewLabel = a:createLabel({
-        x = 1, y = L.PREVIEW,
-        width = W - 1,
-        height = 1,
-        text = "   crane: (—, —)",
-        bg = C.bgDark,
-        fg = C.fgCyan,
-    })
-    r:addChild(self._previewLabel)
 end
 
 function PanelUI:_buildButtons()
@@ -696,7 +678,6 @@ function PanelUI:setCraneStatus(opts)
     end
     if opts.errorMsg  ~= nil then self._state.craneErrorMsg = opts.errorMsg end
     self:_updateStatus()
-    self:_updatePreview()
 end
 
 function PanelUI:setGridSize(maxX, maxY)
