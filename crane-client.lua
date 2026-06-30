@@ -251,7 +251,7 @@ local function mainLoop()
             -- Disconnect watchdog: if we haven't heard from the panel for
             -- more than CONNECTION_TIMEOUT seconds, assume connection is dead.
             local elapsed = os.epoch("utc") - lastMessageTime
-            if elapsed > rc.CONNECTION_TIMEOUT * 2000 then
+            if elapsed > rc.CONNECTION_TIMEOUT * 1000 then
                 print(string.format("Disconnect detected (%ds silence), reconnecting...", elapsed / 1000))
                 conn = nil
                 tryReconnect()
@@ -293,8 +293,18 @@ local function mainLoop()
                     sendStatus()
                 else
                     executeCommand(cmd, params, seq)
+
+                    -- Heartbeat timer may have been consumed/discarded while
+                    -- executeCommand was blocking (sleep inside waitUntilStopped
+                    -- consumes timer events that don't match its own timer ID).
+                    -- Restart it explicitly so the panel doesn't time out.
+                    if heartbeatTimer then os.cancelTimer(heartbeatTimer) end
+                    heartbeatTimer = os.startTimer(rc.HEARTBEAT_INTERVAL)
                 end
-            elseif msg.body.message_type == "CONFIG_QUERY" then
+            elseif msg.body.message_type == "PING" then
+                    sendStatus()
+
+                elseif msg.body.message_type == "CONFIG_QUERY" then
                 sendMessage({
                     type = "response",
                     body = {
