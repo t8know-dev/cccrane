@@ -852,7 +852,7 @@ function PanelUI:_updateStatus()
     -- Build compact status line
     local pos = string.format("Pos: (%d,%d)", s.cranePos[1], s.cranePos[2])
     local sticker = s.craneSticker and "Sticker:ON" or "Sticker:OFF"
-    local grid = "%dx%d":format(s.gridMaxX, s.gridMaxY)
+    local grid = string.format("%dx%d", s.gridMaxX, s.gridMaxY)
     local line = status .. "  |  " .. pos .. "  |  " .. sticker .. "  |  " .. grid
     sl:setText(line)
 end
