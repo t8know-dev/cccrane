@@ -257,9 +257,9 @@ local function lowerTo(amount)
 end
 
 local function raise()
-    print("raise " .. cfg.LIFT_HEIGHT)
+    print("raise " .. cfg.LIFT_HEIGHT + 3)
     enableLift()
-    runMove(cfg.LIFT_HEIGHT, -1)
+    runMove(cfg.LIFT_HEIGHT + 3, -1)
 end
 
 local function raiseTo(amount)

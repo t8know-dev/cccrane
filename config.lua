@@ -34,8 +34,8 @@ return {
     RELAY_PERIPHERAL = "left",
 
     -- Redstone relay output sides (on the relay block)
-    AXIS_SIDE = "top",
-    LIFT_SIDE = "front",
+    AXIS_SIDE = "front",
+    LIFT_SIDE = "top",
     STICKER_SIDE = "bottom",
 
     -- Axis polarity: set INVERSE_X or INVERSE_Y to true if the respective

@@ -572,7 +572,7 @@ local function mainLoop()
             -- quickRedraw() is called inside handleTouch/handleChar/handleKey
 
         elseif event == "char" then
-            handleChar(p2)
+            handleChar(id)
 
         elseif event == "key" then
             handleKey(p2)
