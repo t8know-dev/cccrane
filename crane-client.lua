@@ -119,6 +119,7 @@ local function executeCommand(command, params, seq)
     crane.markRunning()
     sendStatus()
 
+    local aborted = false
     local ok, err = pcall(function()
         if command == "GOTO" then
             crane.gotoXY(params.x, params.y)
@@ -130,8 +131,11 @@ local function executeCommand(command, params, seq)
             crane.home()
         elseif command == "PICKANDDROP" then
             crane.gotoXY(params.src.x, params.src.y)
+            if crane.isStopped() then aborted = true; return end
             crane.pickup()
+            if crane.isStopped() then aborted = true; return end
             crane.gotoXY(params.dst.x, params.dst.y)
+            if crane.isStopped() then aborted = true; return end
             crane.drop()
         elseif command == "STATUS_QUERY" then
             -- nothing to do, status sent below
@@ -142,7 +146,16 @@ local function executeCommand(command, params, seq)
 
     busy = false
 
-    if not ok then
+    if aborted then
+        sendMessage({
+            type = "response",
+            body = {
+                message_type = "ACK",
+                status = "emergency_stop",
+                command_seq = seq,
+            },
+        })
+    elseif not ok then
         sendMessage({
             type = "response",
             body = {

@@ -123,6 +123,7 @@ local function resetRelays()
 end
 
 local function enableLift()
+    if EMERGENCY_STOP then return end
     relay.setOutput(cfg.LIFT_SIDE, true)
     relayTick()
 end
@@ -143,12 +144,14 @@ end
 ------------------------------------------------------------
 
 local function stickerGrab()
+    if EMERGENCY_STOP then return end
     pulse(cfg.STICKER_SIDE) -- OFF -> ON (toggle latch)
     state.stickerOn = true
     saveState()
 end
 
 local function stickerRelease()
+    if EMERGENCY_STOP then return end
     pulse(cfg.STICKER_SIDE) -- ON -> OFF (toggle latch)
     state.stickerOn = false
     saveState()
@@ -169,6 +172,7 @@ end
 
 local function selectX()
     waitUntilStopped()
+    if EMERGENCY_STOP then return end
     relay.setOutput(cfg.AXIS_SIDE, false)
     relay.setOutput(cfg.LIFT_SIDE, false)
     axisTick()
@@ -176,6 +180,7 @@ end
 
 local function selectY()
     waitUntilStopped()
+    if EMERGENCY_STOP then return end
     relay.setOutput(cfg.AXIS_SIDE, true)
     relay.setOutput(cfg.LIFT_SIDE, false)
     axisTick()
@@ -187,6 +192,7 @@ end
 
 local function runMove(distance, modifier)
     if distance <= 0 then return end
+    if EMERGENCY_STOP then return end
     gear.move(distance, modifier)
     waitUntilStopped()
 end
@@ -209,6 +215,7 @@ local function moveX(target)
     if target == state.currentX then return end
     local dx = target - state.currentX
     selectX()
+    if EMERGENCY_STOP then return end
     if cfg.INVERSE_X then
         dx = -dx
     end
@@ -217,14 +224,17 @@ local function moveX(target)
     else
         moveBackward(-dx)
     end
-    state.currentX = target
-    saveState()
+    if not EMERGENCY_STOP then
+        state.currentX = target
+        saveState()
+    end
 end
 
 local function moveY(target)
     if target == state.currentY then return end
     local dy = target - state.currentY
     selectY()
+    if EMERGENCY_STOP then return end
     if cfg.INVERSE_Y then
         dy = -dy
     end
@@ -233,8 +243,10 @@ local function moveY(target)
     else
         moveBackward(-dy)
     end
-    state.currentY = target
-    saveState()
+    if not EMERGENCY_STOP then
+        state.currentY = target
+        saveState()
+    end
 end
 
 ------------------------------------------------------------
@@ -396,9 +408,10 @@ function craneClearStop()
     EMERGENCY_STOP = false
 end
 
---- Trigger an emergency stop. Active at the next waitUntilStopped() check.
+--- Trigger an emergency stop. Stops the motor immediately.
 function craneEmergencyStop()
     EMERGENCY_STOP = true
+    gear.stop()
 end
 
 --- Return the current stop-flag state.
