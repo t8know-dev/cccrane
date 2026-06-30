@@ -1,23 +1,7 @@
--- panel_ui.lua — PixelUI-based crane control panel UI
+-- panel_ui.lua — PixelUI-based crane control panel UI (v2)
 --
--- A reusable UI module built on top of PixelUI for the crane control panel.
--- Expected to be loaded by crane-panel.lua, which provides ECNet2 logic
--- and business callbacks.
---
--- Usage:
---   local panelUI = require("panel_ui").create({
---       callbacks = {
---           onCommand  = function(action, params) ... end,
---           onFieldChange = function(key, value) ... end,
---           onConnectionRequest = function(request, side, ch, dist) ... end,
---           onMessage = function(msg) ... end,
---           onTimer   = function(timerId) ... end,
---       },
---   })
---   parallel.waitForAny(
---       function() panelUI:run() end,
---       ecnet2.daemon
---   )
+-- Redesigned with visual hierarchy: bordered frames, progress bar,
+-- loading indicator, and color-coded status elements.
 
 local pixelui = require("pixelui")
 
@@ -28,37 +12,45 @@ PanelUI.__index = PanelUI
 local FIELDS = { "src_x", "src_y", "dst_x", "dst_y" }
 
 local FIELD_DEFS = {
-    src_x = { col = 6,  row = 4,  labelX = 3, label = "X" },
-    src_y = { col = 6,  row = 5,  labelX = 3, label = "Y" },
-    dst_x = { col = 31, row = 6,  labelX = 28, label = "X" },
-    dst_y = { col = 31, row = 7,  labelX = 28, label = "Y" },
+    src_x = { col = 3,  row = 2, label = "X", section = "source" },
+    src_y = { col = 12, row = 2, label = "Y", section = "source" },
+    dst_x = { col = 3,  row = 2, label = "X", section = "dest" },
+    dst_y = { col = 12, row = 2, label = "Y", section = "dest" },
 }
 
 local BUTTON_DEFS = {
-    { action = "PICKANDDROP",    label = "RUN",  col = 3 },
-    { action = "GOTO",           label = "GOTO", col = 9 },
-    { action = "HOME",           label = "HOME", col = 16 },
-    { action = "EMERGENCY_STOP", label = "EMRG", col = 25 },
+    { action = "PICKANDDROP", label = "RUN",  key = "run" },
+    { action = "GOTO",        label = "GOTO", key = "goto" },
+    { action = "HOME",        label = "HOME", key = "home" },
+    { action = "EMERGENCY_STOP", label = "EMRG STOP", key = "emrg" },
 }
 
--- Layout: 1 = header, 2 = sep, 3 = labels, 4-7 = inputs, 8 = gap, 9 = buttons,
---          10 = gap, 11 = status, 12 = sep, 13+ = log
-local L = { HEADER = 1, SEP1 = 2, LABEL = 3, INPUTS = { 4, 5, 6, 7 },
-            GAP1 = 8, BUTTONS = 9, GAP2 = 10, STATUS = 11, SEP2 = 12, LOG_START = 13 }
-
 local MAX_LOG = 50
-local STATUS_W = 16
+
+-- ── Color palette ────────────────────────────────────────────────
+
+local C = {
+    bgDark    = colors.black,
+    bgPanel   = colors.gray,
+    bgBtn     = colors.blue,
+    bgEmrg    = colors.red,
+    fgWhite   = colors.white,
+    fgLight   = colors.lightGray,
+    fgGray    = colors.gray,
+    fgYellow  = colors.yellow,
+    fgCyan    = colors.cyan,
+    fgGreen   = colors.green,
+    fgRed     = colors.red,
+    fgOrange  = colors.orange,
+    border    = colors.lightGray,
+    separator = colors.gray,
+    ok        = colors.green,
+    warn      = colors.yellow,
+    err       = colors.red,
+}
 
 -- ── Constructor ──────────────────────────────────────────────────
 
----@param opts table
----@param opts.callbacks table
----@param opts.callbacks.onCommand fun(action:string, params:table|nil)
----@param opts.callbacks.onFieldChange fun(key:string, value:string)
----@param opts.callbacks.onConnectionRequest fun(...)
----@param opts.callbacks.onMessage fun(msg:table)
----@param opts.callbacks.onTimer fun(timerId:number)
----@return PanelUI
 function PanelUI.create(opts)
     local self = setmetatable({}, PanelUI)
     opts = opts or {}
@@ -66,9 +58,12 @@ function PanelUI.create(opts)
 
     local TERM_W, TERM_H = term.getSize()
     self._termW = TERM_W
-    self._logRows = math.max(1, TERM_H - L.LOG_START + 1)
+    self._termH = TERM_H
 
-    self._app = pixelui.create({ background = colors.black, rootBorder = { color = colors.gray } })
+    self._app = pixelui.create({
+        background = C.bgDark,
+        rootBorder = { color = C.separator },
+    })
     self._root = self._app:getRoot()
 
     self._state = {
@@ -81,16 +76,22 @@ function PanelUI.create(opts)
         craneError    = false,
         craneErrorMsg = "",
         craneId       = "?",
+        gridMaxX      = 100,
+        gridMaxY      = 100,
+        severity      = "idle",
         logLines      = {},
     }
 
+    self:_calcLayout()
     self:_buildHeader()
-    self:_buildSeparators()
-    self:_buildLabels()
-    self:_buildFields()
+    self:_buildSourcePanel()
+    self:_buildDestPanel()
+    self:_buildProgressBar()
     self:_buildButtons()
-    self:_buildStatus()
+    self:_buildStatusFrame()
     self:_buildLogArea()
+    -- Loading visual handled by status dot + text, no physical ring widget
+
     self:_patchTextBoxTab()
     self:_patchRootEvents()
     self:_hookFieldChanges()
@@ -101,114 +102,439 @@ function PanelUI.create(opts)
     return self
 end
 
--- ── Widget Builders ───────────────────────────────────────────────
+-- ── Layout Calculator ────────────────────────────────────────────
+
+function PanelUI:_calcLayout()
+    local H = self._termH
+    -- 1=header, 2=sep, 3-4=source+dest, 5=progress, 6=buttons, 7-8=status, 9+=log
+    self._L = {
+        HEADER    = 1,
+        SEP1      = 2,
+        INPUTS    = 3,
+        INPUT_END = 4,
+        PROGRESS  = 5,
+        BUTTONS   = 6,
+        STATUS    = 7,
+        STATUS_END= 8,
+        LOG_START = 9,
+    }
+    self._logRows = math.max(1, H - self._L.LOG_START + 1)
+end
+
+-- ── Widget Builders ──────────────────────────────────────────────
 
 function PanelUI:_buildHeader()
+    local a, r, W = self._app, self._root, self._termW
+    local L = self._L
+
+    -- Full-width header with border bottom only
+    self._headerFrame = a:createFrame({
+        x = 1, y = L.HEADER, width = W, height = 1,
+        bg = C.bgDark,
+        border = nil,
+    })
+    r:addChild(self._headerFrame)
+
+    -- Status dot + text
+    self._headerDot = a:createLabel({
+        x = 1, y = L.HEADER,
+        width = 3,
+        height = 1,
+        text = "  ●",
+        bg = C.bgDark,
+        fg = C.fgRed,
+    })
+    r:addChild(self._headerDot)
+
+    self._headerStatus = a:createLabel({
+        x = 4, y = L.HEADER,
+        width = 14,
+        height = 1,
+        text = "DISCONNECTED",
+        align = "left",
+        bg = C.bgDark,
+        fg = C.fgGray,
+    })
+    r:addChild(self._headerStatus)
+
+    self._headerTitle = a:createLabel({
+        x = 19, y = L.HEADER,
+        width = 30,
+        height = 1,
+        text = "CRANE CONTROL PANEL",
+        align = "left",
+        bg = C.bgDark,
+        fg = C.fgWhite,
+    })
+    r:addChild(self._headerTitle)
+
+    self._headerId = a:createLabel({
+        x = W - 14, y = L.HEADER,
+        width = 14,
+        height = 1,
+        text = "",
+        align = "right",
+        bg = C.bgDark,
+        fg = C.fgCyan,
+    })
+    r:addChild(self._headerId)
+end
+
+function PanelUI:_buildSourcePanel()
     local a, r = self._app, self._root
-    self._header = {
-        title = a:createLabel({ x = 1, y = L.HEADER, width = self._termW - STATUS_W,
-                                height = 1, text = " CRANE CONTROL PANEL ",
-                                align = "left", bg = colors.black, fg = colors.white }),
-        status = a:createLabel({ x = self._termW - STATUS_W + 1, y = L.HEADER,
-                                 width = STATUS_W, height = 1, text = " DISCONNECTED ",
-                                 align = "center", bg = colors.red, fg = colors.white }),
+    local L = self._L
+    local W = self._termW
+
+    local panW = math.floor((W - 3) / 2)  -- left half minus gap
+    local height = 2
+
+    self._sourceFrame = a:createFrame({
+        x = 1, y = L.INPUTS,
+        width = panW, height = height,
+        bg = C.bgPanel,
+        border = { color = C.border },
+    })
+    r:addChild(self._sourceFrame)
+
+    -- Section title row
+    self._sourceTitle = a:createLabel({
+        x = 2, y = L.INPUTS,
+        width = panW - 5,
+        height = 1,
+        text = "SOURCE (Pickup)",
+        bg = C.bgPanel,
+        fg = C.fgYellow,
+    })
+    r:addChild(self._sourceTitle)
+
+    -- X field
+    local lblX = a:createLabel({
+        x = 2, y = L.INPUTS + 1,
+        width = 2,
+        height = 1,
+        text = "X:",
+        bg = C.bgPanel,
+        fg = C.fgLight,
+    })
+    r:addChild(lblX)
+
+    local tbSrcX = a:createTextBox({
+        x = 4, y = L.INPUTS + 1,
+        width = 5, height = 1,
+        numericOnly = true, maxLength = 5,
+        placeholder = "     ", placeholderColor = C.border,
+        bg = C.bgDark, fg = C.fgWhite,
+        border = { color = C.border },
+    })
+    r:addChild(tbSrcX)
+
+    -- Y field
+    local lblY = a:createLabel({
+        x = 12, y = L.INPUTS + 1,
+        width = 2,
+        height = 1,
+        text = "Y:",
+        bg = C.bgPanel,
+        fg = C.fgLight,
+    })
+    r:addChild(lblY)
+
+    local tbSrcY = a:createTextBox({
+        x = 14, y = L.INPUTS + 1,
+        width = 5, height = 1,
+        numericOnly = true, maxLength = 5,
+        placeholder = "     ", placeholderColor = C.border,
+        bg = C.bgDark, fg = C.fgWhite,
+        border = { color = C.border },
+    })
+    r:addChild(tbSrcY)
+
+    -- Current position preview
+    self._srcPreview = a:createLabel({
+        x = 22, y = L.INPUTS + 1,
+        width = panW - 23,
+        height = 1,
+        text = "crn: (—, —)",
+        bg = C.bgPanel,
+        fg = C.fgCyan,
+    })
+    r:addChild(self._srcPreview)
+
+    self._fields = {
+        src_x = { tb = tbSrcX, label = lblX },
+        src_y = { tb = tbSrcY, label = lblY },
     }
-    r:addChild(self._header.title)
-    r:addChild(self._header.status)
 end
 
-function PanelUI:_buildSeparators()
-    local a, r, w = self._app, self._root, self._termW
-    local sepText = string.rep("-", w)
-    self._sep1 = a:createLabel({ x = 1, y = L.SEP1, width = w, height = 1,
-                                  text = sepText, bg = colors.black, fg = colors.gray })
-    r:addChild(self._sep1)
-    self._sep2 = a:createLabel({ x = 1, y = L.SEP2, width = w, height = 1,
-                                  text = sepText, bg = colors.black, fg = colors.gray })
-    r:addChild(self._sep2)
-end
-
-function PanelUI:_buildLabels()
+function PanelUI:_buildDestPanel()
     local a, r = self._app, self._root
-    self._sourceLabel = a:createLabel({ x = 3, y = L.LABEL, width = 18, height = 1,
-                                         text = "SOURCE (Pickup)", bg = colors.black, fg = colors.yellow })
-    r:addChild(self._sourceLabel)
-    self._destLabel = a:createLabel({ x = 28, y = L.LABEL, width = 14, height = 1,
-                                       text = "DEST (Drop)", bg = colors.black, fg = colors.yellow })
-    r:addChild(self._destLabel)
+    local L = self._L
+    local W = self._termW
+
+    local panW = math.floor((W - 3) / 2)
+    local panX = W - panW
+    local height = 2
+
+    self._destFrame = a:createFrame({
+        x = panX, y = L.INPUTS,
+        width = panW, height = height,
+        bg = C.bgPanel,
+        border = { color = C.border },
+    })
+    r:addChild(self._destFrame)
+
+    -- Section title
+    self._destTitle = a:createLabel({
+        x = panX + 2, y = L.INPUTS,
+        width = panW - 5,
+        height = 1,
+        text = "DEST (Drop)",
+        bg = C.bgPanel,
+        fg = C.fgYellow,
+    })
+    r:addChild(self._destTitle)
+
+    -- X field
+    local lblX = a:createLabel({
+        x = panX + 2, y = L.INPUTS + 1,
+        width = 2,
+        height = 1,
+        text = "X:",
+        bg = C.bgPanel,
+        fg = C.fgLight,
+    })
+    r:addChild(lblX)
+
+    local tbDstX = a:createTextBox({
+        x = panX + 4, y = L.INPUTS + 1,
+        width = 5, height = 1,
+        numericOnly = true, maxLength = 5,
+        placeholder = "     ", placeholderColor = C.border,
+        bg = C.bgDark, fg = C.fgWhite,
+        border = { color = C.border },
+    })
+    r:addChild(tbDstX)
+
+    -- Y field
+    local lblY = a:createLabel({
+        x = panX + 12, y = L.INPUTS + 1,
+        width = 2,
+        height = 1,
+        text = "Y:",
+        bg = C.bgPanel,
+        fg = C.fgLight,
+    })
+    r:addChild(lblY)
+
+    local tbDstY = a:createTextBox({
+        x = panX + 14, y = L.INPUTS + 1,
+        width = 5, height = 1,
+        numericOnly = true, maxLength = 5,
+        placeholder = "     ", placeholderColor = C.border,
+        bg = C.bgDark, fg = C.fgWhite,
+        border = { color = C.border },
+    })
+    r:addChild(tbDstY)
+
+    -- Current position preview
+    self._dstPreview = a:createLabel({
+        x = panX + 22, y = L.INPUTS + 1,
+        width = panW - 23,
+        height = 1,
+        text = "crn: (—, —)",
+        bg = C.bgPanel,
+        fg = C.fgCyan,
+    })
+    r:addChild(self._dstPreview)
+
+    self._fields.dst_x = { tb = tbDstX, label = lblX }
+    self._fields.dst_y = { tb = tbDstY, label = lblY }
 end
 
-function PanelUI:_buildFields()
+function PanelUI:_buildProgressBar()
     local a, r = self._app, self._root
-    self._fields = {}
-    for _, key in ipairs(FIELDS) do
-        local def = FIELD_DEFS[key]
-        local label = a:createLabel({ x = def.labelX, y = def.row, width = 2, height = 1,
-                                       text = def.label .. ":", bg = colors.black, fg = colors.lightGray })
-        r:addChild(label)
-        local tb = a:createTextBox({ x = def.col, y = def.row, width = 5, height = 1,
-                                      numericOnly = true, maxLength = 5,
-                                      placeholder = "     ", placeholderColor = colors.gray,
-                                      bg = colors.black, fg = colors.white,
-                                      border = { color = colors.gray } })
-        r:addChild(tb)
-        self._fields[key] = { tb = tb, label = label }
-    end
+    local W = self._termW
+    local L = self._L
+
+    self._progressBar = a:createProgressBar({
+        x = 1, y = L.PROGRESS,
+        width = W - 1,
+        height = 1,
+        min = 0,
+        max = 100,
+        value = 0,
+        label = "(—, —)",
+        showPercent = true,
+        bg = C.bgDark,
+        fg = C.fgWhite,
+        trackColor = C.bgPanel,
+        fillColor = C.ok,
+        border = { color = C.border },
+    })
+    r:addChild(self._progressBar)
 end
 
 function PanelUI:_buildButtons()
     local a, r = self._app, self._root
+    local L = self._L
+
     self._btnMap = {}
     self._btnList = {}
-    for _, bdef in ipairs(BUTTON_DEFS) do
-        local w = #bdef.label + 2
-        local btn = a:createButton({ x = bdef.col, y = L.BUTTONS, width = w, height = 1,
-                                      label = " " .. bdef.label .. " ",
-                                      bg = colors.blue, fg = colors.white })
-        r:addChild(btn)
-        local meta = { widget = btn, action = bdef.action }
-        self._btnMap[bdef.action] = meta
-        self._btnList[#self._btnList + 1] = meta
-        btn:setOnClick(function() self:_onClick(bdef.action) end)
-    end
+
+    -- RUN
+    local runBtn = a:createButton({
+        x = 2, y = L.BUTTONS,
+        width = 7, height = 1,
+        label = "  RUN  ",
+        bg = C.bgBtn, fg = C.fgWhite,
+        border = { color = C.border },
+    })
+    r:addChild(runBtn)
+    self._btnMap["PICKANDDROP"] = { widget = runBtn, action = "PICKANDDROP" }
+    self._btnList[#self._btnList + 1] = self._btnMap["PICKANDDROP"]
+    runBtn:setOnClick(function() self:_onClick("PICKANDDROP") end)
+
+    -- GOTO
+    local gotoBtn = a:createButton({
+        x = 10, y = L.BUTTONS,
+        width = 8, height = 1,
+        label = "  GOTO  ",
+        bg = C.bgBtn, fg = C.fgWhite,
+        border = { color = C.border },
+    })
+    r:addChild(gotoBtn)
+    self._btnMap["GOTO"] = { widget = gotoBtn, action = "GOTO" }
+    self._btnList[#self._btnList + 1] = self._btnMap["GOTO"]
+    gotoBtn:setOnClick(function() self:_onClick("GOTO") end)
+
+    -- HOME
+    local homeBtn = a:createButton({
+        x = 19, y = L.BUTTONS,
+        width = 8, height = 1,
+        label = "  HOME  ",
+        bg = C.bgBtn, fg = C.fgWhite,
+        border = { color = C.border },
+    })
+    r:addChild(homeBtn)
+    self._btnMap["HOME"] = { widget = homeBtn, action = "HOME" }
+    self._btnList[#self._btnList + 1] = self._btnMap["HOME"]
+    homeBtn:setOnClick(function() self:_onClick("HOME") end)
+
+    -- EMRG STOP (right aligned, wider, red)
+    local emrgBtn = a:createButton({
+        x = self._termW - 12, y = L.BUTTONS,
+        width = 11, height = 1,
+        label = "  EMRG  ",
+        bg = C.bgEmrg, fg = C.fgWhite,
+        border = { color = C.fgOrange },
+    })
+    r:addChild(emrgBtn)
+    self._btnMap["EMERGENCY_STOP"] = { widget = emrgBtn, action = "EMERGENCY_STOP" }
+    self._btnList[#self._btnList + 1] = self._btnMap["EMERGENCY_STOP"]
+    emrgBtn:setOnClick(function() self:_onClick("EMERGENCY_STOP") end)
 end
 
-function PanelUI:_buildStatus()
+function PanelUI:_buildStatusFrame()
     local a, r = self._app, self._root
-    self._statusLabel = a:createLabel({ x = 2, y = L.STATUS, width = self._termW - 3,
-                                         height = 1, text = "Status: ---",
-                                         bg = colors.black, fg = colors.white })
+    local W = self._termW
+    local L = self._L
+
+    self._statusFrame = a:createFrame({
+        x = 1, y = L.STATUS,
+        width = W - 1,
+        height = 2,
+        bg = C.bgPanel,
+        border = { color = C.border },
+    })
+    r:addChild(self._statusFrame)
+
+    -- Title tab in the frame (we approximate with a label at top-left)
+    self._statusTitle = a:createLabel({
+        x = 2, y = L.STATUS,
+        width = 8,
+        height = 1,
+        text = " STATUS ",
+        bg = C.bgPanel,
+        fg = C.fgYellow,
+    })
+    r:addChild(self._statusTitle)
+
+    -- Status line inside frame
+    self._statusDot = a:createLabel({
+        x = 2, y = L.STATUS + 1,
+        width = 2,
+        height = 1,
+        text = "●",
+        bg = C.bgPanel,
+        fg = C.ok,
+    })
+    r:addChild(self._statusDot)
+
+    self._statusLabel = a:createLabel({
+        x = 4, y = L.STATUS + 1,
+        width = W - 8,
+        height = 1,
+        text = "IDLE",
+        bg = C.bgPanel,
+        fg = C.fgWhite,
+    })
     r:addChild(self._statusLabel)
 end
 
 function PanelUI:_buildLogArea()
     local a, r = self._app, self._root
+    local W = self._termW
+    local L = self._L
+
+    self._logFrame = a:createFrame({
+        x = 1, y = L.LOG_START,
+        width = W - 1,
+        height = self._logRows,
+        bg = C.bgDark,
+        border = { color = C.border },
+    })
+    r:addChild(self._logFrame)
+
+    self._logTitle = a:createLabel({
+        x = 2, y = L.LOG_START,
+        width = 20,
+        height = 1,
+        text = " OPERATION LOG ",
+        bg = C.bgDark,
+        fg = C.fgYellow,
+    })
+    r:addChild(self._logTitle)
+
+    -- Pre-allocated log line widgets (inside frame area, offset by 1)
     self._logWidgets = {}
-    for row = 0, self._logRows - 1 do
-        local lw = a:createLabel({ x = 1, y = L.LOG_START + row, width = self._termW,
-                                    height = 1, text = "", bg = colors.black, fg = colors.black })
+    for row = 0, self._logRows - 2 do
+        local lw = a:createLabel({
+            x = 2,
+            y = L.LOG_START + 1 + row,
+            width = W - 4,
+            height = 1,
+            text = "",
+            bg = C.bgDark,
+            fg = C.bgDark,
+        })
         r:addChild(lw)
         self._logWidgets[row + 1] = lw
     end
 end
 
 -- ── Tab Key Patch ─────────────────────────────────────────────────
--- TextBox consumes Tab internally (inserts a literal tab). We patch
--- each field's TextBox to intercept Tab and cycle focus instead.
 
 function PanelUI:_patchTextBoxTab()
     for _, meta in pairs(self._fields) do
         local tb = meta.tb
-        local origHandle = tb.handleEvent
+        local orig = tb.handleEvent
         local self_ = self
         function tb:handleEvent(event, ...)
             if event == "key" then
-                local keyCode = ...
-                if keyCode == keys.tab then
-                    return self_:_cycleFocus()
-                end
+                local kc = ...
+                if kc == keys.tab then return self_:_cycleFocus() end
             end
-            return origHandle(self, event, ...)
+            return orig(self, event, ...)
         end
     end
 end
@@ -217,11 +543,11 @@ function PanelUI:_cycleFocus()
     local app = self._app
     local focus = app:getFocus()
     for i, key in ipairs(FIELDS) do
-        local meta = self._fields[key]
-        if meta and meta.tb == focus then
-            local nextKey = FIELDS[i % #FIELDS + 1]
-            local nextMeta = self._fields[nextKey]
-            if nextMeta then app:setFocus(nextMeta.tb) end
+        local m = self._fields[key]
+        if m and m.tb == focus then
+            local nk = FIELDS[i % #FIELDS + 1]
+            local nm = self._fields[nk]
+            if nm then app:setFocus(nm.tb) end
             return true
         end
     end
@@ -231,9 +557,6 @@ function PanelUI:_cycleFocus()
 end
 
 -- ── Root Event Patch ──────────────────────────────────────────────
--- PixelUI dispatches unrecognised events (ecnet2_request, ecnet2_message,
--- timer, term_resize) through root:handleEvent. We intercept them here
--- and forward to the application callbacks.
 
 function PanelUI:_patchRootEvents()
     local self_ = self
@@ -262,7 +585,6 @@ function PanelUI:_patchRootEvents()
         end
         if event == "term_resize" then
             self_:_onResize()
-            -- fall through to orig so PixelUI also gets it
         end
         return orig and orig(self, event, ...) or false
     end
@@ -273,29 +595,46 @@ end
 function PanelUI:_onResize()
     local W, H = term.getSize()
     self._termW = W
-    local newRows = math.max(1, H - L.LOG_START + 1)
+    self._termH = H
 
+    self:_calcLayout()
+    local L = self._L
+    local newRows = math.max(1, H - L.LOG_START + 1)
     if newRows ~= self._logRows then
         for _, w in ipairs(self._logWidgets) do w.visible = false end
         self._logWidgets = {}
         self._logRows = newRows
-        for row = 0, self._logRows - 1 do
-            local lw = self._app:createLabel({ x = 1, y = L.LOG_START + row, width = W,
-                                                height = 1, text = "", bg = colors.black, fg = colors.black })
+        for row = 0, self._logRows - 2 do
+            local lw = self._app:createLabel({
+                x = 2,
+                y = L.LOG_START + 1 + row,
+                width = W - 4,
+                height = 1,
+                text = "",
+                bg = C.bgDark,
+                fg = C.bgDark,
+            })
             self._root:addChild(lw)
             self._logWidgets[row + 1] = lw
+        end
+        if self._logFrame then
+            self._logFrame:setSize(W - 1, self._logRows)
         end
         self:_refreshLog()
     end
 
-    -- Fix header status position
-    if self._header and self._header.status then
-        self._header.status:setPosition(W - STATUS_W + 1, L.HEADER)
+    if self._headerId then
+        self._headerId:setPosition(W - 14, L.HEADER)
     end
-    -- Fix separator widths
-    local sepText = string.rep("-", W)
-    if self._sep1 then self._sep1:setText(sepText) self._sep1:setSize(W, 1) end
-    if self._sep2 then self._sep2:setText(sepText) self._sep2:setSize(W, 1) end
+
+    local emrg = self._btnMap and self._btnMap["EMERGENCY_STOP"]
+    if emrg then
+        emrg.widget:setPosition(W - 12, L.BUTTONS)
+    end
+
+    if self._progressBar then
+        self._progressBar:setSize(W - 1, 1)
+    end
 end
 
 -- ── Field Change Hook ─────────────────────────────────────────────
@@ -315,12 +654,10 @@ end
 function PanelUI:_onClick(action)
     local cb = self._callbacks.onCommand
     if not cb then return end
-
     if action == "GOTO" then
         local x, y = self:getSrc()
         if x and y then return cb("GOTO", { x = x, y = y }) end
         cb("__ERROR", "Set source coordinates first")
-
     elseif action == "PICKANDDROP" then
         local sx, sy = self:getSrc()
         local dx, dy = self:getDst()
@@ -328,7 +665,6 @@ function PanelUI:_onClick(action)
             return cb("PICKANDDROP", { src = { x = sx, y = sy }, dst = { x = dx, y = dy } })
         end
         cb("__ERROR", "Set source AND destination coordinates first")
-
     elseif action == "HOME" then
         cb("HOME")
     elseif action == "EMERGENCY_STOP" then
@@ -347,6 +683,10 @@ function PanelUI:stop()
     if a and a.stop then a:stop() end
 end
 
+function PanelUI:getApp()
+    return self._app
+end
+
 ---@param connected boolean
 ---@param craneId string|nil
 function PanelUI:setConnected(connected, craneId)
@@ -356,16 +696,15 @@ function PanelUI:setConnected(connected, craneId)
     self:_updateButtons()
 end
 
----@param registered boolean
 function PanelUI:setRegistered(registered)
     self._state.registered = registered
     self:_redrawHeader()
     self:_updateButtons()
 end
 
----@param pending boolean
 function PanelUI:setPending(pending)
     self._state.pending = pending
+    self:showLoading(pending)
     self:_updateButtons()
     self:_updateStatus()
 end
@@ -373,12 +712,37 @@ end
 ---@param opts {pos?:number[], sticker?:boolean, busy?:boolean, error?:boolean, errorMsg?:string}
 function PanelUI:setCraneStatus(opts)
     opts = opts or {}
-    if opts.pos       then self._state.cranePos      =     opts.pos    end
+    if opts.pos       then self._state.cranePos   = opts.pos    end
     if opts.sticker   ~= nil then self._state.craneSticker = opts.sticker end
-    if opts.busy      ~= nil then self._state.craneBusy    = opts.busy    end
-    if opts.error     ~= nil then self._state.craneError   = opts.error   end
-    if opts.errorMsg  ~= nil then self._state.craneErrorMsg= opts.errorMsg end
+    if opts.busy      ~= nil then
+        self._state.craneBusy = opts.busy
+        self._state.severity = opts.busy and "busy" or self._state.craneError and "error" or "idle"
+    end
+    if opts.error     ~= nil then
+        self._state.craneError = opts.error
+        if opts.error then self._state.severity = "error" end
+    end
+    if opts.errorMsg  ~= nil then self._state.craneErrorMsg = opts.errorMsg end
     self:_updateStatus()
+    self:_updatePreview()
+    self:_updateProgress()
+end
+
+function PanelUI:setGridSize(maxX, maxY)
+    self._state.gridMaxX = maxX or 100
+    self._state.gridMaxY = maxY or 100
+    if self._progressBar then
+        self._progressBar:setRange(0, self._state.gridMaxX)
+    end
+    self:_updateProgress()
+end
+
+--- Show or hide the pending loading indicator.
+--- Visual feedback is handled by the status dot in the status frame.
+---@param visible boolean
+function PanelUI:showLoading(visible)
+    -- Visual loading state is shown via the status dot/status text
+    -- (updated automatically by setPending/setCraneStatus)
 end
 
 ---@param key "src_x"|"src_y"|"dst_x"|"dst_y"
@@ -388,8 +752,6 @@ function PanelUI:getField(key)
     return m and m.tb:getText() or ""
 end
 
----@param key string
----@param value string
 function PanelUI:setField(key, value)
     local m = self._fields[key]
     if m then m.tb:setText(tostring(value)) end
@@ -407,48 +769,44 @@ end
 ---@param color number|nil
 function PanelUI:addLogLine(text, color)
     local lines = self._state.logLines
-    table.insert(lines, { text = text, color = color or colors.lightGray })
+    table.insert(lines, { text = text, color = color or C.fgLight })
     if #lines > MAX_LOG then table.remove(lines, 1) end
     self:_refreshLog()
+end
+
+function PanelUI:clearFields()
+    for _, key in ipairs(FIELDS) do
+        local m = self._fields[key]
+        if m then m.tb:setText("") end
+    end
 end
 
 -- ── Internal Render Updates ───────────────────────────────────────
 
 function PanelUI:_redrawHeader()
-    local h = self._header
-    if not h then return end
-    local st, bg
-    if self._state.connected and self._state.registered then
-        if self._state.craneId and self._state.craneId ~= "?" then
-            st = " " .. self._state.craneId .. " "
-        else
-            st = " CONNECTED "
-        end
-        bg = colors.green
-    else
-        st = " DISCONNECTED "
-        bg = colors.red
-    end
-    if st ~= h.status.text then
-        h.status:setText(st)
-    end
-    h.status.bg = bg
+    local connected = self._state.connected and self._state.registered
+    self._headerDot.fg = connected and C.ok or C.fgRed
+    self._headerDot:setText("  ●")
+    self._headerStatus:setText(connected and "CONNECTED" or "DISCONNECTED")
+    self._headerStatus.fg = connected and C.ok or C.fgGray
+    self._headerId:setText(connected and ("[" .. self._state.craneId .. "]") or "")
+    self._headerId.fg = connected and C.fgCyan or C.bgDark
 end
 
 function PanelUI:_updateButtons()
-    local hasCrane = self._state.connected and self._state.registered
+    local enabled = self._state.connected and self._state.registered
     local blocked = self._state.pending
     for _, m in ipairs(self._btnList) do
         local btn = m.widget
         if m.action == "EMERGENCY_STOP" then
-            btn.bg = hasCrane and colors.orange or colors.gray
-            btn.fg = colors.white
-        elseif not hasCrane or blocked then
-            btn.bg = colors.gray
-            btn.fg = colors.gray
+            btn.bg = enabled and C.bgEmrg or C.bgPanel
+            btn.fg = C.fgWhite
+        elseif not enabled or blocked then
+            btn.bg = C.bgPanel
+            btn.fg = C.fgGray
         else
-            btn.bg = colors.blue
-            btn.fg = colors.white
+            btn.bg = C.bgBtn
+            btn.fg = C.fgWhite
         end
     end
 end
@@ -458,30 +816,70 @@ function PanelUI:_updateStatus()
     local sl = self._statusLabel
     if not sl then return end
 
-    local status
+    local sev = s.severity
+    local status, dotColor
+
     if not s.connected then
-        status = "Status: ---"
+        status = "DISCONNECTED"
+        dotColor = C.fgRed
+        sev = "disconnected"
     elseif s.craneError then
-        status = "Status: ERROR (" .. s.craneErrorMsg .. ")"
+        status = "ERROR"
+        dotColor = C.fgRed
+        -- Append error message if space allows
+        if s.craneErrorMsg and #s.craneErrorMsg > 0 then
+            status = "ERROR: " .. s.craneErrorMsg
+        end
+        sev = "error"
     elseif s.pending then
-        status = "Status: PENDING"
+        status = "PENDING"
+        dotColor = C.fgOrange
+        sev = "pending"
     elseif s.craneBusy then
-        status = "Status: BUSY"
+        status = "BUSY"
+        dotColor = C.fgOrange
+        sev = "busy"
     else
-        status = "Status: IDLE"
+        status = "IDLE"
+        dotColor = C.ok
+        sev = "idle"
     end
 
-    local pos = string.format("Pos: (%d, %d)", s.cranePos[1], s.cranePos[2])
-    local parts = { status, pos, "Sticker: " .. (s.craneSticker and "ON" or "OFF"), "Crane: " .. s.craneId }
-    local line = parts[1]
-    for i = 2, #parts do
-        if #line + #parts[i] + 3 <= sl.width then
-            line = line .. "  |  " .. parts[i]
-        else
-            break
-        end
-    end
+    -- Update severity for later
+    self._state.severity = sev
+    self._statusDot.fg = dotColor
+
+    -- Build compact status line
+    local pos = string.format("Pos: (%d,%d)", s.cranePos[1], s.cranePos[2])
+    local sticker = s.craneSticker and "Sticker:ON" or "Sticker:OFF"
+    local grid = "%dx%d":format(s.gridMaxX, s.gridMaxY)
+    local line = status .. "  |  " .. pos .. "  |  " .. sticker .. "  |  " .. grid
     sl:setText(line)
+end
+
+function PanelUI:_updatePreview()
+    local x, y = self._state.cranePos[1], self._state.cranePos[2]
+    local text = string.format("crn: (%d,%d)", x, y)
+    if self._srcPreview then self._srcPreview:setText(text) end
+    if self._dstPreview then self._dstPreview:setText(text) end
+end
+
+function PanelUI:_updateProgress()
+    local pb = self._progressBar
+    if not pb then return end
+    local x = self._state.cranePos[1]
+    local maxX = self._state.gridMaxX
+    pb:setValue(x)
+    pb:setLabel(string.format("(%d, %d)", self._state.cranePos[1], self._state.cranePos[2]))
+    -- Color based on position
+    local pct = maxX > 0 and (x / maxX) or 0
+    if pct > 0.9 then
+        pb:setColors(C.bgPanel, C.fgRed, C.fgWhite)
+    elseif pct > 0.7 then
+        pb:setColors(C.bgPanel, C.fgOrange, C.fgWhite)
+    else
+        pb:setColors(C.bgPanel, C.ok, C.fgWhite)
+    end
 end
 
 function PanelUI:_refreshLog()
@@ -497,8 +895,12 @@ function PanelUI:_refreshLog()
             w.fg = lines[idx].color
         else
             w:setText("")
-            w.fg = colors.black
+            w.fg = C.bgDark
         end
+    end
+    -- Update log title with count
+    if self._logTitle then
+        self._logTitle:setText(" OPERATION LOG (" .. #lines .. ") ")
     end
 end
 

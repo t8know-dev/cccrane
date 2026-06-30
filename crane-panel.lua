@@ -1,4 +1,4 @@
--- crane-panel.lua — v7 Crane control panel (ECNet2 server)
+-- crane-panel.lua — v8 Crane control panel (ECNet2 server)
 --
 -- Full-screen terminal GUI for remotely controlling a crane via ECNet2.
 -- Displays source/destination position fields, command buttons, crane status,
@@ -106,6 +106,7 @@ local function sendCommand(command, params)
     }
 
     panelUI:addLogLine(timestamp() .. " Sending: " .. command)
+    panelUI:showLoading(true)
     local ok = pcall(panelState.connection.send, panelState.connection, msg)
     if not ok then
         panelUI:addLogLine("SEND FAILED — connection lost", colors.red)
@@ -164,6 +165,7 @@ local function handleMessage(msg)
             panelUI:addLogLine(timestamp() .. "  " .. body.command_seq .. " ERROR: " .. ackMsg, colors.red)
         end
         panelUI:setPending(false)
+        panelUI:showLoading(false)
 
     elseif body.message_type == "STATUS" then
         local st = body.status or {}
@@ -186,6 +188,7 @@ local function handleMessage(msg)
 
     elseif body.message_type == "CONFIG_RESPONSE" then
         local cfg = body.config or {}
+        panelUI:setGridSize(cfg.max_x or 100, cfg.max_y or 100)
         panelUI:addLogLine(timestamp() .. " Config: " .. (cfg.max_x or "?")
             .. "x" .. (cfg.max_y or "?") .. " grid", colors.yellow)
     end
