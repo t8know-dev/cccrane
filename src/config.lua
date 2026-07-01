@@ -38,7 +38,7 @@ return {
 
     -- Modem sides for ECNet2 communication (one per physical computer)
     CLIENT_MODEM_SIDE = "top",    -- crane computer (runs client.lua)
-    SERVER_MODEM_SIDE = "top",    -- panel computer (runs panel.lua, kiosk.lua)
+    SERVER_MODEM_SIDE = "back",    -- panel computer (runs panel.lua, kiosk.lua)
 
     -- Redstone relay output sides (on the relay block)
     AXIS_SIDE = "top",
