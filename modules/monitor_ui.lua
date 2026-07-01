@@ -20,7 +20,7 @@ local headerLabel
 local statusLabel
 
 -- Main screen
-local mainLoadBtn, mainUnloadBtn, mainSep
+local mainLoadBtn, mainUnloadBtn
 
 -- List screens (select_source / select_dest)
 local listTitle
@@ -33,8 +33,8 @@ local confirmLine1, confirmLine2, confirmLine3, confirmLine4, confirmLine5, conf
 local confirmRunBtn, confirmAbortBtn
 
 -- Executing screen
-local execTitle, execStatusLabel
-local execAbortBtn
+local execTitle
+local execStatusLines = {}       -- multiple lines for wrapped status text
 
 -- Success screen
 local successLine1, successLine2
@@ -88,6 +88,35 @@ end
 
 -- Center text helper
 
+--- Word-wrap text to fit within a given width.
+--- Returns up to `maxLines` lines, each truncated if needed.
+local function wrapText(text, width, maxLines)
+    width = width or w
+    maxLines = maxLines or 5
+    text = tostring(text or "")
+    if #text == 0 then return { "" } end
+
+    local lines = {}
+    while #text > 0 and #lines < maxLines do
+        if #text <= width then
+            lines[#lines + 1] = text
+            break
+        end
+        -- Try to break at a space within width
+        local breakAt = width
+        for i = width, 1, -1 do
+            if text:sub(i, i) == " " then
+                breakAt = i - 1
+                break
+            end
+        end
+        -- If no space found, hard-break
+        lines[#lines + 1] = text:sub(1, breakAt)
+        text = text:sub(breakAt + 2)  -- skip the space if we broke at one
+    end
+    return lines
+end
+
 local function computeLayout(h_)
     local contentStart = 3
     local contentEnd = h_ - 4
@@ -110,8 +139,7 @@ local function computeLayout(h_)
         actionSelectY = h_ - 3,
         actionAbortY  = h_ - 2,
         mainBtnY1     = contentStart + math.max(0, math.floor((contentHeight - 9) / 2)),
-        sepY          = contentStart + math.max(0, math.floor((contentHeight - 9) / 2)) + 4,
-        mainBtnY2     = contentStart + math.max(0, math.floor((contentHeight - 9) / 2)) + 6,
+        mainBtnY2     = contentStart + math.max(0, math.floor((contentHeight - 9) / 2)) + 4,
     }
 end
 
@@ -230,16 +258,6 @@ function M.createUI(monitor, stateModule)
         end,
     })
     root:addChild(mainUnloadBtn)
-
-    -- Separator between buttons
-    mainSep = app:createLabel({
-        x = 1, y = ly.sepY,
-        width = w, height = 1,
-        text = string.rep("-", w),
-        align = "center",
-        bg = C.bg, fg = C.sep,
-    })
-    root:addChild(mainSep)
 
     ---------------------------------------------------------------------------
     -- List screen
@@ -481,32 +499,17 @@ function M.createUI(monitor, stateModule)
     })
     root:addChild(execTitle)
 
-    execStatusLabel = app:createLabel({
-        x = 1, y = ly.contentStart + 3,
-        width = w, height = 1,
-        text = "",
-        align = "center",
-        bg = C.bg, fg = C.fgLight,
-    })
-    root:addChild(execStatusLabel)
-
-    execAbortBtn = app:createButton({
-        x = 2, y = ly.actionSelectY,
-        width = 13, height = 1,
-        label = centerText("ABORT", 13),
-        bg = C.btnRed, fg = C.fgWhite,
-        onClick = function()
-            local now = os.clock()
-            if now - clickGuardTime < 0.15 then return end
-            clickGuardTime = now
-            if st.getState("screen") ~= "executing" then return end
-            st.updateState({ operationStatus = "STOP requested..." })
-            if app._callbacks and app._callbacks.onEmergencyStop then
-                app._callbacks.onEmergencyStop()
-            end
-        end,
-    })
-    root:addChild(execAbortBtn)
+    -- Multi-line status with word wrap (5 lines should cover most messages)
+    for i = 1, 5 do
+        execStatusLines[i] = app:createLabel({
+            x = 1, y = ly.contentStart + 2 + (i - 1),
+            width = w, height = 1,
+            text = "",
+            align = "left",
+            bg = C.bg, fg = C.fgLight,
+        })
+        root:addChild(execStatusLines[i])
+    end
 
     ---------------------------------------------------------------------------
     -- Success / Error / Connection lost
@@ -576,7 +579,6 @@ end
 local function hideAllDynamic()
     if mainLoadBtn then mainLoadBtn.visible = false end
     if mainUnloadBtn then mainUnloadBtn.visible = false end
-    if mainSep then mainSep.visible = false end
     if listTitle then listTitle.visible = false end
     for _, r in ipairs(itemRows) do r.visible = false end
     if upBtn then upBtn.visible = false end
@@ -593,8 +595,7 @@ local function hideAllDynamic()
     if confirmRunBtn then confirmRunBtn.visible = false end
     if confirmAbortBtn then confirmAbortBtn.visible = false end
     if execTitle then execTitle.visible = false end
-    if execStatusLabel then execStatusLabel.visible = false end
-    if execAbortBtn then execAbortBtn.visible = false end
+    for _, l in ipairs(execStatusLines) do l.visible = false end
     if successLine1 then successLine1.visible = false end
     if successLine2 then successLine2.visible = false end
     if errorLine1 then errorLine1.visible = false end
@@ -647,7 +648,6 @@ function M.updateScreen(state)
 
     if state.screen == "main" then
         if mainLoadBtn then mainLoadBtn.visible = true end
-        if mainSep then mainSep.visible = true end
         if mainUnloadBtn then mainUnloadBtn.visible = true end
 
     elseif state.screen == "select_source" or state.screen == "select_dest" then
@@ -740,11 +740,11 @@ function M.updateScreen(state)
             execTitle:setText(centerText(mode, w))
             execTitle.visible = true
         end
-        if execStatusLabel then
-            execStatusLabel:setText(truncate(state.operationStatus or "", w))
-            execStatusLabel.visible = true
+        local lines = wrapText(state.operationStatus or "", w, #execStatusLines)
+        for i, l in ipairs(execStatusLines) do
+            l:setText(lines[i] or "")
+            l.visible = true
         end
-        if execAbortBtn then execAbortBtn.visible = true end
 
     elseif state.screen == "success" then
         if successLine1 then
@@ -787,8 +787,9 @@ end
 function M.updateProgress(state)
     if not app then return end
     if state.screen == "executing" then
-        if execStatusLabel then
-            execStatusLabel:setText(truncate(state.operationStatus or "", w))
+        local lines = wrapText(state.operationStatus or "", w, #execStatusLines)
+        for i, l in ipairs(execStatusLines) do
+            l:setText(lines[i] or "")
         end
         app:render()
     end

@@ -408,12 +408,14 @@ function craneClearStop()
     EMERGENCY_STOP = false
 end
 
---- Trigger an emergency stop. Stops the motor immediately.
+--- Trigger an emergency stop. Prevents any new movement and
+--- ensures all relays are switched off. The `waitUntilStopped`
+--- loop (called after moves) will drain any remaining gearshift motion.
+--- Note: sequenced_gearshift has no setSpeed() — motion can only be
+--- stopped by letting isRunning() finish and resetting relays.
 function craneEmergencyStop()
     EMERGENCY_STOP = true
-    if gear then
-        gear.setSpeed(0)
-    end
+    resetRelays()
 end
 
 --- Return the current stop-flag state.
