@@ -6,7 +6,7 @@
 local pixelui = require("lib.pixelui")
 
 ---@class PanelUI
-local PanelUI = {}()
+local PanelUI = {}
 PanelUI.__index = PanelUI
 
 local FIELDS = { "src_x", "src_y", "dst_x", "dst_y" }
