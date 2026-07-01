@@ -5063,7 +5063,7 @@ function Button:draw(textLayer, pixelLayer)
 	end
 
 	local label = self.label or ""
-	local availableWidth = innerWidth > 0 and innerWidth or width
+	local availableWidth = (innerWidth > 0 and innerHeight > 0) and innerWidth or width
 	if #label > availableWidth then
 		label = label:sub(1, availableWidth)
 	end
