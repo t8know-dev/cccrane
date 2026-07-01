@@ -17,7 +17,7 @@ random.initWithTiming()
 local rc = dofile("cccrane/src/remote_config.lua")
 local crane = dofile("cccrane/src/lib/crane.lua")
 
-ecnet2.open("top")
+ecnet2.open(crane.config.CLIENT_MODEM_SIDE)
 
 local id = ecnet2.Identity("/.ecnet2")
 local proto = id:Protocol {
@@ -94,7 +94,7 @@ local function tryReconnect()
             return
         end
 
-        local ok, c = pcall(proto.connect, proto, rc.PANEL_ADDRESS, "top")
+        local ok, c = pcall(proto.connect, proto, rc.PANEL_ADDRESS, crane.config.CLIENT_MODEM_SIDE)
         if ok then
             local ok2, greetingAddr = pcall(c.receive, c, rc.CONNECTION_TIMEOUT)
             if ok2 and greetingAddr then
@@ -402,4 +402,4 @@ parallel.waitForAny(mainLoop, msgRouter, ecnet2.daemon)
 
 -- Cleanup on exit (Ctrl+T / unexpected shutdown)
 crane.done()
-ecnet2.close("top")
+ecnet2.close(crane.config.CLIENT_MODEM_SIDE)

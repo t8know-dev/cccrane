@@ -74,7 +74,7 @@ local KEEPALIVE_INTERVAL = 7      -- seconds between keepalive pings
 -- ECNet2 SETUP
 ------------------------------------------------------------
 
-ecnet2.open("top")
+ecnet2.open(cfg.SERVER_MODEM_SIDE)
 
 local id = ecnet2.Identity("/.ecnet2")
 local proto = id:Protocol {
@@ -602,4 +602,4 @@ if panelState.connection then
         body = { message_type = "COMMAND", command = "EMERGENCY_STOP" },
     })
 end
-ecnet2.close("top")
+ecnet2.close(cfg.SERVER_MODEM_SIDE)

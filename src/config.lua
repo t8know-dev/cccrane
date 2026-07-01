@@ -36,6 +36,10 @@ return {
     GEAR_PERIPHERAL = "Create_SequencedGearShift_13",
     RELAY_PERIPHERAL = "redstone_relay_61",
 
+    -- Modem sides for ECNet2 communication (one per physical computer)
+    CLIENT_MODEM_SIDE = "top",    -- crane computer (runs client.lua)
+    SERVER_MODEM_SIDE = "top",    -- panel computer (runs panel.lua, kiosk.lua)
+
     -- Redstone relay output sides (on the relay block)
     AXIS_SIDE = "top",
     LIFT_SIDE = "left",

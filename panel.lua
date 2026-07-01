@@ -13,6 +13,7 @@ local ecnet2 = require "ecnet2"
 local random = require "ccryptolib.random"
 random.initWithTiming()
 
+local cfg = dofile("cccrane/src/config.lua")
 local PanelUI = require("src.lib.panel_ui")
 
 ------------------------------------------------------------
@@ -55,7 +56,7 @@ local KEEPALIVE_INTERVAL = 7   -- seconds between keepalive pings
 -- ECNet2 SETUP
 ------------------------------------------------------------
 
-ecnet2.open("top")
+ecnet2.open(cfg.SERVER_MODEM_SIDE)
 
 local id = ecnet2.Identity("/.ecnet2")
 local proto = id:Protocol {
@@ -315,4 +316,4 @@ if panelState.connection then
         body = { message_type = "COMMAND", command = "EMERGENCY_STOP" },
     })
 end
-ecnet2.close("top")
+ecnet2.close(cfg.SERVER_MODEM_SIDE)
