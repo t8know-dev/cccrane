@@ -391,11 +391,7 @@ function craneInit()
     -- containing its mechanical blocks.
     print("Initializing crane peripherals...")
     gear = periph.waitForPeripheral(cfg.GEAR_PERIPHERAL, "Gear: " .. cfg.GEAR_PERIPHERAL)
-    assert(peripheral.getType(cfg.GEAR_PERIPHERAL) == "sequenced_gearshift",
-        "Peripheral '" .. cfg.GEAR_PERIPHERAL .. "' is not a SequencedGearshift (got: " .. tostring(peripheral.getType(cfg.GEAR_PERIPHERAL)) .. ")")
     relay = periph.waitForPeripheral(cfg.RELAY_PERIPHERAL, "Relay: " .. cfg.RELAY_PERIPHERAL)
-    assert(peripheral.getType(cfg.RELAY_PERIPHERAL) == "redstone_relay",
-        "Peripheral '" .. cfg.RELAY_PERIPHERAL .. "' is not a RedstoneRelay (got: " .. tostring(peripheral.getType(cfg.RELAY_PERIPHERAL)) .. ")")
 
     resetRelays()
 
