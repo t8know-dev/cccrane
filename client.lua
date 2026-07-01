@@ -69,6 +69,25 @@ local function sendStatus()
     })
 end
 
+--- Send a STATUS event with an explicit operation phase number.
+--- Used by PICKANDDROP to report sub-step progress to the panel.
+--- @param phase number 1=moving_to_src, 2=picking_up, 3=moving_to_dst, 4=dropping, 5=returning
+local function sendStatusWithPhase(phase)
+    local st = crane.getState()
+    sendMessage({
+        type = "event",
+        body = {
+            message_type = "STATUS",
+            status = {
+                position = { st.currentX, st.currentY },
+                sticker = st.stickerOn,
+                busy = busy,
+                phase = phase,
+            },
+        },
+    })
+end
+
 --- Try to re-establish connection. Blocks until connected.
 --- Must be called inside the parallel.waitForAny with ecnet2.daemon
 --- so Connection:receive() can receive ecnet2_message events.
@@ -130,17 +149,35 @@ local function executeCommand(command, params, seq)
         elseif command == "HOME" then
             crane.home()
         elseif command == "PICKANDDROP" then
+            -- Phase 1: Moving to pickup point
+            sendStatusWithPhase(1)
             crane.gotoXY(params.src.x, params.src.y)
             if crane.isStopped() then aborted = true; return end
-            sendStatus()
-            crane.pickup()
+
+            -- Phase 2: Picking up (lower, sticker grab, raise to transport height)
+            sendStatusWithPhase(2)
+            crane.lower()
             if crane.isStopped() then aborted = true; return end
-            sendStatus()
+            crane.stickerGrab()
+            if crane.isStopped() then aborted = true; return end
+            crane.raiseTo(crane.config.LIFT_HEIGHT - crane.config.TRANSPORT_LOWER)
+            if crane.isStopped() then aborted = true; return end
+
+            -- Phase 3: Moving to drop point
+            sendStatusWithPhase(3)
             crane.gotoXY(params.dst.x, params.dst.y)
             if crane.isStopped() then aborted = true; return end
-            sendStatus()
-            crane.drop()
-            sendStatus()
+
+            -- Phase 4: Dropping (lower to ground)
+            sendStatusWithPhase(4)
+            crane.lowerTo(crane.config.LIFT_HEIGHT)
+            if crane.isStopped() then aborted = true; return end
+
+            -- Phase 5: Returning (sticker release, raise)
+            crane.stickerRelease()
+            if crane.isStopped() then aborted = true; return end
+            sendStatusWithPhase(5)
+            crane.raise()
         elseif command == "STATUS_QUERY" then
             -- nothing to do, status sent below
         else

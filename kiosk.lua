@@ -186,6 +186,8 @@ local EXEC_LABELS = {
     [2] = "Picking up...",
     [3] = "Moving to drop point...",
     [4] = "Dropping...",
+    [5] = "Returning...",
+    [6] = "Done!",
 }
 
 ------------------------------------------------------------
@@ -286,7 +288,7 @@ local function handleMessage(msg)
             st.updateState({
                 operationDone = true,
                 operationError = nil,
-                operationStatus = "Operation completed!",
+                operationStatus = "Done!",
                 screen = "success",
             })
         elseif ackStatus == "emergency_stop" then
@@ -313,6 +315,7 @@ local function handleMessage(msg)
         local newBusy = stBody.busy == true
         local newError = stBody.error == true
         local newErrorMsg = stBody.error_msg or ""
+        local newPhase = stBody.phase  -- explicit phase from client (nil for non-PICKANDROP commands)
 
         panelState.cranePos = newPos
         panelState.craneSticker = newSticker
@@ -320,11 +323,18 @@ local function handleMessage(msg)
         panelState.craneError = newError
         panelState.craneErrorMsg = newErrorMsg
 
-        -- If we're executing, infer the phase from position/sticker
+        -- If we're executing, determine the phase
         if panelState.executing then
-            local src = st.getState("selectedSource") or { x = 0, y = 0 }
-            local dst = st.getState("selectedDest") or { x = 0, y = 0 }
-            local phase = inferExecPhase(newPos, newSticker, src, dst)
+            local phase
+            if newPhase ~= nil then
+                -- Use explicit phase from client (PICKANDROP sub-steps)
+                phase = newPhase
+            else
+                -- Fall back to inference for other commands
+                local src = st.getState("selectedSource") or { x = 0, y = 0 }
+                local dst = st.getState("selectedDest") or { x = 0, y = 0 }
+                phase = inferExecPhase(newPos, newSticker, src, dst)
+            end
             if phase ~= panelState.execPhase then
                 panelState.execPhase = phase
                 local label = EXEC_LABELS[phase] or "Executing..."
