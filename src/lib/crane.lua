@@ -1,4 +1,4 @@
--- crane.lua v1.5.6 — CC: Create crane controller library
+-- crane.lua v1.6.0 — CC: Create crane controller library
 -- Extracted from crane.lua for use as a reusable module.
 -- Loads configuration from src/config.lua.
 --
@@ -15,8 +15,16 @@
 --   that homing can be skipped when the crane shut down cleanly. If the crane
 --   was interrupted mid-operation (chunk unload / Ctrl+T), the next run will
 --   detect craneRunning=true and perform a full homing cycle.
+--
+-- Chunk-loading resilience:
+--   Peripherals (gear, relay) are in different chunks than the computer.
+--   At startup, craneInit() waits for each peripheral with a pcall(peripheral.wrap)
+--   retry loop. At runtime, all gear/relay calls use pcall(peripheral.call, ...)
+--   so that transient chunk unloads don't crash the program — they just pause
+--   until the chunk reloads.
 
 local cfg = dofile("cccrane/src/config.lua")
+local periph = dofile("cccrane/src/lib/peripherals.lua")
 
 local STATE_FILE = ".crane-state"
 local STATE_FILE_TMP = ".crane-state.tmp"
@@ -89,23 +97,37 @@ local function axisTick()
     sleep(cfg.AXIS_SWITCH_DELAY)
 end
 
+--- Safe relay output — uses pcall(peripheral.call) so that transient chunk
+--- unloads don't crash the program. Silently ignores failures on the
+--- assumption that subsequent calls will succeed when the chunk reloads.
+local function safeRelayOutput(side, state)
+    pcall(peripheral.call, cfg.RELAY_PERIPHERAL, "setOutput", side, state)
+end
+
 ------------------------------------------------------------
--- PERIPHERALS
+-- PERIPHERALS (initialized by craneInit())
 ------------------------------------------------------------
 
-local gear = peripheral.wrap(cfg.GEAR_PERIPHERAL)
-local relay = peripheral.wrap(cfg.RELAY_PERIPHERAL)
+local gear = nil
+local relay = nil
 
 ------------------------------------------------------------
 -- WAIT
 ------------------------------------------------------------
 
 local function waitUntilStopped()
-    while gear.isRunning() and not EMERGENCY_STOP do
+    -- Primary wait: loop until gear stops or emergency stop triggers.
+    -- Uses pcall(peripheral.call) so that a chunk unload mid-move doesn't
+    -- crash — it spins until the chunk reloads and isRunning becomes callable.
+    while not EMERGENCY_STOP do
+        local ok, running = pcall(peripheral.call, cfg.GEAR_PERIPHERAL, "isRunning")
+        if ok and not running then break end
         sleep(0.1)
     end
-    -- Still wait for physical stop even after emergency stop
-    while gear.isRunning() do
+    -- Drain any remaining motion even after emergency stop.
+    while true do
+        local ok, running = pcall(peripheral.call, cfg.GEAR_PERIPHERAL, "isRunning")
+        if ok and not running then break end
         sleep(0.1)
     end
     sleep(cfg.MOVE_SETTLE_DELAY)
@@ -116,15 +138,15 @@ end
 ------------------------------------------------------------
 
 local function resetRelays()
-    relay.setOutput(cfg.AXIS_SIDE, false)
-    relay.setOutput(cfg.LIFT_SIDE, false)
-    relay.setOutput(cfg.STICKER_SIDE, false)
+    safeRelayOutput(cfg.AXIS_SIDE, false)
+    safeRelayOutput(cfg.LIFT_SIDE, false)
+    safeRelayOutput(cfg.STICKER_SIDE, false)
     relayTick()
 end
 
 local function enableLift()
     if EMERGENCY_STOP then return end
-    relay.setOutput(cfg.LIFT_SIDE, true)
+    safeRelayOutput(cfg.LIFT_SIDE, true)
     relayTick()
 end
 
@@ -133,9 +155,9 @@ end
 ------------------------------------------------------------
 
 local function pulse(side)
-    relay.setOutput(side, true)
+    safeRelayOutput(side, true)
     shortTick()
-    relay.setOutput(side, false)
+    safeRelayOutput(side, false)
     shortTick()
 end
 
@@ -173,16 +195,16 @@ end
 local function selectX()
     waitUntilStopped()
     if EMERGENCY_STOP then return end
-    relay.setOutput(cfg.AXIS_SIDE, false)
-    relay.setOutput(cfg.LIFT_SIDE, false)
+    safeRelayOutput(cfg.AXIS_SIDE, false)
+    safeRelayOutput(cfg.LIFT_SIDE, false)
     axisTick()
 end
 
 local function selectY()
     waitUntilStopped()
     if EMERGENCY_STOP then return end
-    relay.setOutput(cfg.AXIS_SIDE, true)
-    relay.setOutput(cfg.LIFT_SIDE, false)
+    safeRelayOutput(cfg.AXIS_SIDE, true)
+    safeRelayOutput(cfg.LIFT_SIDE, false)
     axisTick()
 end
 
@@ -193,7 +215,11 @@ end
 local function runMove(distance, modifier)
     if distance <= 0 then return end
     if EMERGENCY_STOP then return end
-    gear.move(distance, modifier)
+    local ok, err = pcall(peripheral.call, cfg.GEAR_PERIPHERAL, "move", distance, modifier)
+    if not ok then
+        print("WARNING: gear.move() failed — " .. tostring(err))
+        print("  (chunk may have unloaded, waiting for reload...)")
+    end
     waitUntilStopped()
 end
 
@@ -358,8 +384,19 @@ end
 -- PUBLIC INIT / DONE
 ------------------------------------------------------------
 
---- Initialise the crane: load saved state, home if needed, mark as running.
+--- Initialise the crane: wait for peripherals, load saved state, home if needed, mark as running.
 function craneInit()
+    -- Wait for gear and relay peripherals before doing anything.
+    -- This handles the case where the computer loaded before the chunks
+    -- containing its mechanical blocks.
+    print("Initializing crane peripherals...")
+    gear = periph.waitForPeripheral(cfg.GEAR_PERIPHERAL, "Gear: " .. cfg.GEAR_PERIPHERAL)
+    assert(peripheral.getType(cfg.GEAR_PERIPHERAL) == "sequenced_gearshift",
+        "Peripheral '" .. cfg.GEAR_PERIPHERAL .. "' is not a SequencedGearshift (got: " .. tostring(peripheral.getType(cfg.GEAR_PERIPHERAL)) .. ")")
+    relay = periph.waitForPeripheral(cfg.RELAY_PERIPHERAL, "Relay: " .. cfg.RELAY_PERIPHERAL)
+    assert(peripheral.getType(cfg.RELAY_PERIPHERAL) == "redstone_relay",
+        "Peripheral '" .. cfg.RELAY_PERIPHERAL .. "' is not a RedstoneRelay (got: " .. tostring(peripheral.getType(cfg.RELAY_PERIPHERAL)) .. ")")
+
     resetRelays()
 
     local loaded = loadState()

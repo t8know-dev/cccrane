@@ -28,6 +28,7 @@ end
 local st = loadMod("modules/load_unload_state")
 local ui = loadMod("modules/monitor_ui")
 ui.init(pixelui)
+local periph = dofile("cccrane/src/lib/peripherals.lua")
 
 ------------------------------------------------------------
 -- STATE
@@ -74,6 +75,7 @@ local KEEPALIVE_INTERVAL = 7      -- seconds between keepalive pings
 -- ECNet2 SETUP
 ------------------------------------------------------------
 
+periph.waitForPeripheral(cfg.SERVER_MODEM_SIDE, "Modem: " .. cfg.SERVER_MODEM_SIDE)
 ecnet2.open(cfg.SERVER_MODEM_SIDE)
 
 local id = ecnet2.Identity("/.ecnet2")
@@ -90,17 +92,7 @@ local listener = proto:listen()
 
 local monitorName = cfg.MONITOR_PERIPHERAL or "monitor_0"
 print("Waiting for monitor '" .. monitorName .. "'...")
-local mon = peripheral.wrap(monitorName)
-local retries = 0
-while not mon do
-    retries = retries + 1
-    if retries > 30 then
-        print("Monitor not found after 30s. Give up.")
-        return
-    end
-    os.sleep(1)
-    mon = peripheral.wrap(monitorName)
-end
+local mon = periph.waitForPeripheral(monitorName, "Monitor: " .. monitorName)
 print("Monitor found: " .. monitorName)
 
 ------------------------------------------------------------

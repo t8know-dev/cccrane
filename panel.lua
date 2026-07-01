@@ -15,6 +15,7 @@ random.initWithTiming()
 
 local cfg = dofile("cccrane/src/config.lua")
 local PanelUI = require("src.lib.panel_ui")
+local periph = dofile("cccrane/src/lib/peripherals.lua")
 
 ------------------------------------------------------------
 -- STATE
@@ -56,6 +57,7 @@ local KEEPALIVE_INTERVAL = 7   -- seconds between keepalive pings
 -- ECNet2 SETUP
 ------------------------------------------------------------
 
+periph.waitForPeripheral(cfg.SERVER_MODEM_SIDE, "Modem: " .. cfg.SERVER_MODEM_SIDE)
 ecnet2.open(cfg.SERVER_MODEM_SIDE)
 
 local id = ecnet2.Identity("/.ecnet2")

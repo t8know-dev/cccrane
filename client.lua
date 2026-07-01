@@ -16,7 +16,11 @@ random.initWithTiming()
 
 local rc = dofile("cccrane/src/remote_config.lua")
 local crane = dofile("cccrane/src/lib/crane.lua")
+local periph = dofile("cccrane/src/lib/peripherals.lua")
 
+-- Wait for the modem peripheral to be available before opening it.
+-- The modem may be in a different chunk than this computer.
+periph.waitForPeripheral(crane.config.CLIENT_MODEM_SIDE, "Modem: " .. crane.config.CLIENT_MODEM_SIDE)
 ecnet2.open(crane.config.CLIENT_MODEM_SIDE)
 
 local id = ecnet2.Identity("/.ecnet2")
