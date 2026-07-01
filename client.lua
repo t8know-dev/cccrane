@@ -35,6 +35,7 @@ local busy = false         -- true while executing a command
 local currentPhase = nil   -- execution phase for PICKANDDROP (1-5, nil when idle/other)
 local heartbeatTimer = nil -- timer ID for periodic status
 local lastMessageTime = os.epoch("utc")  -- time of last received message (watchdog)
+local reconnectAborted = false  -- set by msgRouter to interrupt tryReconnect on EMERGENCY_STOP
 
 ------------------------------------------------------------
 -- CONNECTION HELPERS
@@ -81,16 +82,23 @@ end
 --- Try to re-establish connection. Blocks until connected.
 --- Must be called inside the parallel.waitForAny with ecnet2.daemon
 --- so Connection:receive() can receive ecnet2_message events.
+--- Can be aborted by msgRouter setting reconnectAborted = true (EMERGENCY_STOP).
 local function tryReconnect()
     print("Attempting reconnect...")
     local backoff = rc.RECONNECT_BACKOFF_INITIAL
+    reconnectAborted = false
     while true do
         if conn then return end
+        if reconnectAborted then
+            print("Reconnect aborted")
+            reconnectAborted = false
+            return
+        end
 
         local ok, c = pcall(proto.connect, proto, rc.PANEL_ADDRESS, "top")
         if ok then
-            local ok2, greeting = pcall(c.receive, c)
-            if ok2 and greeting then
+            local ok2, greetingAddr = pcall(c.receive, c, rc.CONNECTION_TIMEOUT)
+            if ok2 and greetingAddr then
                 conn = c
                 print("Reconnected")
 
@@ -243,15 +251,13 @@ local function msgRouter()
         local event, p1, p2, p3, p4, p5 = os.pullEvent()
 
         if event == "ecnet2_message" then
-            if conn and p1 == conn.id then
-                -- Any message on this connection proves the link is alive
-                lastMessageTime = os.epoch("utc")
-
-                if p3 and p3.type == "request" and p3.body
-                   and p3.body.message_type == "COMMAND"
-                   and p3.body.command == "EMERGENCY_STOP" then
-                    -- Handle emergency stop immediately, even during a blocking op
-                    crane.emergencyStop()
+            -- Even during reconnect (conn == nil), handle EMERGENCY_STOP
+            -- so the panel can abort a stuck reconnect loop.
+            if (not conn or p1 == conn.id) and p3 and p3.type == "request" and p3.body
+               and p3.body.message_type == "COMMAND"
+               and p3.body.command == "EMERGENCY_STOP" then
+                crane.emergencyStop()
+                if conn then
                     pcall(conn.send, conn, {
                         type = "response",
                         body = {
@@ -260,10 +266,16 @@ local function msgRouter()
                             command_seq = p3.body.seq,
                         },
                     })
-                else
-                    -- Re-queue for the main loop under a different event name
-                    os.queueEvent("crane_msg", p1, p2, p3, p4, p5)
                 end
+                -- If tryReconnect is running in mainLoop, abort it
+                reconnectAborted = true
+            end
+
+            if conn and p1 == conn.id then
+                -- Any message on this connection proves the link is alive
+                lastMessageTime = os.epoch("utc")
+                -- Re-queue for the main loop under a different event name
+                os.queueEvent("crane_msg", p1, p2, p3, p4, p5)
             end
 
         elseif event == "timer" and p1 == busyTimer then

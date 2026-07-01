@@ -18,6 +18,7 @@ local w, h               -- monitor dimensions
 -- Widget references (shared across screens)
 local headerLabel
 local statusLabel
+local copyrightLabel
 
 -- Main screen
 local mainLoadBtn, mainUnloadBtn
@@ -203,6 +204,16 @@ function M.createUI(monitor, stateModule)
         fg = C.fgGray,
     })
     root:addChild(statusLabel)
+
+    copyrightLabel = app:createLabel({
+        x = 1, y = ly.statusY,
+        width = w - 1, height = 1,
+        text = "",
+        align = "right",
+        bg = C.bg,
+        fg = C.fgGray,
+    })
+    root:addChild(copyrightLabel)
 
     ---------------------------------------------------------------------------
     -- Main screen  (width=13, centered buttons, height=3)
@@ -511,7 +522,7 @@ function M.createUI(monitor, stateModule)
     -- Multi-line status with word wrap (5 lines should cover most messages)
     for i = 1, 5 do
         execStatusLines[i] = app:createLabel({
-            x = 1, y = ly.contentStart + 2 + (i - 1),
+            x = 1, y = ly.contentStart + 3 + (i - 1),
             width = w, height = 1,
             text = "",
             align = "left",
@@ -654,7 +665,10 @@ function M.updateScreen(state)
         statusLabel.visible = true
     end
 
-    updateMainButtons(state)
+    if copyrightLabel then
+        copyrightLabel:setText("(c) jigga")
+        copyrightLabel.visible = true
+    end
 
     if state.screen == "main" then
         if mainLoadBtn then mainLoadBtn.visible = true end

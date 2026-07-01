@@ -215,23 +215,27 @@ end
 
 ui._callbacks.onConnectionRequest = function(request)
     if panelState.connection then
-        -- Already have a crane — reject
-        local dummy = listener:accept("busy", request)
-        ui:addLogLine(timestamp() .. " Rejected extra connection", colors.yellow)
-    else
-        local conn = listener:accept("crane_panel_v1.0", request)
-        panelState.connection = conn
-        panelState.connected = true
-        panelState.pending = false
-        panelState.registered = false
-        panelState.pendingConfigQuery = true
-        panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
-
-        ui:addLogLine(timestamp() .. " Crane connecting...", colors.yellow)
-        ui:setConnected(true, nil)
-        ui:setPending(false)
-        ui:setRegistered(false)
+        -- New connection while old one exists — replace it.
+        -- The old connection was likely dropped by the crane reconnecting.
+        -- Cancel old watchdog/keepalive timers so we don't fire stale events.
+        if panelState.watchdogTimer then os.cancelTimer(panelState.watchdogTimer) end
+        if panelState.keepAliveTimer then os.cancelTimer(panelState.keepAliveTimer) end
+        ui:addLogLine(timestamp() .. " Reconnecting (replaced old connection)", colors.yellow)
     end
+
+    local conn = listener:accept("crane_panel_v1.0", request)
+    panelState.connection = conn
+    panelState.connected = true
+    panelState.pending = false
+    panelState.registered = false
+    panelState.pendingConfigQuery = true
+    panelState.lastMessageTime = os.epoch("utc")
+    panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
+
+    ui:addLogLine(timestamp() .. " Crane connecting...", colors.yellow)
+    ui:setConnected(true, nil)
+    ui:setPending(false)
+    ui:setRegistered(false)
 end
 
 ui._callbacks.onMessage = function(cid, msg)

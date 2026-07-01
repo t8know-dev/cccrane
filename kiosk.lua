@@ -521,22 +521,24 @@ local origHandleEvent = root.handleEvent
 function root:handleEvent(event, ...)
     if event == "ecnet2_request" then
         local rid, req = ...
-        -- Handle connection request
+        -- Handle connection request: replace old connection if one exists
+        -- (the crane reconnected; old connection is stale).
         if panelState.connection then
-            local dummy = listener:accept("busy", req)
-            print(timestamp() .. " Rejected extra connection")
-        else
-            local conn = listener:accept("crane_load_unload_v1.0", req)
-            panelState.connection = conn
-            panelState.connected = true
-            panelState.pending = false
-            panelState.registered = false
-            panelState.pendingConfigQuery = true
-            panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
-            panelState.lastMessageTime = os.epoch("utc")
-            print(timestamp() .. " Crane connecting...")
-            st.updateState({ connected = true, registered = false })
+            if panelState.watchdogTimer then os.cancelTimer(panelState.watchdogTimer) end
+            if panelState.keepAliveTimer then os.cancelTimer(panelState.keepAliveTimer) end
+            print(timestamp() .. " Reconnecting (replaced old connection)")
         end
+
+        local conn = listener:accept("crane_load_unload_v1.0", req)
+        panelState.connection = conn
+        panelState.connected = true
+        panelState.pending = false
+        panelState.registered = false
+        panelState.pendingConfigQuery = true
+        panelState.lastMessageTime = os.epoch("utc")
+        panelState.watchdogTimer = os.startTimer(CONNECTION_TIMEOUT)
+        print(timestamp() .. " Crane connecting...")
+        st.updateState({ connected = true, registered = false })
         return true
     end
 
