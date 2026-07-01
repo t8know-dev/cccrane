@@ -529,16 +529,8 @@ function M.createUI(monitor, stateModule)
     })
     root:addChild(execTitle)
 
-    -- Multi-line status with word wrap (first line shares bottom row with copyright)
-    execStatusLines[1] = app:createLabel({
-        x = 1, y = ly.statusY,
-        width = math.max(1, w - 9), height = 1,
-        text = "",
-        align = "left",
-        bg = C.bg, fg = C.fgLight,
-    })
-    root:addChild(execStatusLines[1])
-    for i = 2, 5 do
+    -- Multi-line status with word wrap (5 lines should cover most messages)
+    for i = 1, 5 do
         execStatusLines[i] = app:createLabel({
             x = 1, y = ly.contentStart + 3 + (i - 1),
             width = w, height = 1,
@@ -680,8 +672,17 @@ function M.updateScreen(state)
     end
 
     if state.screen == "main" then
-        if mainLoadBtn then mainLoadBtn.visible = true end
-        if mainUnloadBtn then mainUnloadBtn.visible = true end
+        local enabled = state.connected and state.registered
+        if mainLoadBtn then
+            mainLoadBtn.bg = enabled and C.btnBlue or C.btnGray
+            mainLoadBtn.fg = enabled and C.fgWhite or C.fgGray
+            mainLoadBtn.visible = true
+        end
+        if mainUnloadBtn then
+            mainUnloadBtn.bg = enabled and C.btnBlue or C.btnGray
+            mainUnloadBtn.fg = enabled and C.fgWhite or C.fgGray
+            mainUnloadBtn.visible = true
+        end
 
     elseif state.screen == "select_source" or state.screen == "select_dest" then
         local isSource = (state.screen == "select_source")
@@ -772,7 +773,6 @@ function M.updateScreen(state)
         if confirmAbortBtn then confirmAbortBtn.visible = true end
 
     elseif state.screen == "executing" then
-        if statusLabel then statusLabel.visible = false end  -- execStatusLines[1] uses its row
         local mode = (state.mode or "load"):upper()
         if execTitle then
             execTitle:setText(centerText(mode, w))
@@ -820,7 +820,6 @@ end
 function M.updateProgress(state)
     if not app then return end
     if state.screen == "executing" then
-        if statusLabel then statusLabel.visible = false end
         local lines = wrapText(state.operationStatus or "", w, #execStatusLines)
         for i, l in ipairs(execStatusLines) do
             l:setText(lines[i] or "")
