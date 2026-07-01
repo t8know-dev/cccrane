@@ -331,10 +331,12 @@ local function handleMessage(msg)
                 -- from overwriting the correct explicit phase)
                 local mode = st.getState("mode")
                 local src, dst
-                if mode == "unload" then
+                if mode == "load" then
+                    -- LOAD: pick up from selectedDest, drop at selectedSource
                     src = st.getState("selectedDest") or { x = 0, y = 0 }
                     dst = st.getState("selectedSource") or { x = 0, y = 0 }
                 else
+                    -- UNLOAD: pick up from selectedSource, drop at selectedDest
                     src = st.getState("selectedSource") or { x = 0, y = 0 }
                     dst = st.getState("selectedDest") or { x = 0, y = 0 }
                 end
@@ -487,13 +489,14 @@ st.subscribe(function(changes)
         local dst = st.getState("selectedDest")
         if src and dst then
             local mode = st.getState("mode")
-            if mode == "unload" then
-                -- For UNLOAD: pick up from dest, drop at source
+            if mode == "load" then
+                -- For LOAD: pick up from dest, drop at source
                 sendCommand("PICKANDDROP", {
                     src = { x = dst.x, y = dst.y },
                     dst = { x = src.x, y = src.y },
                 })
             else
+                -- For UNLOAD: pick up from source, drop at dest
                 sendCommand("PICKANDDROP", {
                     src = { x = src.x, y = src.y },
                     dst = { x = dst.x, y = dst.y },

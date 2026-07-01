@@ -666,13 +666,15 @@ end
 --- Returns: items, currentIndex, indexKey, selectedKey
 local function getListInfo(state)
     local isSource = (state.screen == "select_source")
-    if state.mode == "unload" then
+    if state.mode == "load" then
+        -- LOAD: first screen (select_source) = destPoints, second (select_dest) = sourcePoints
         if isSource then
             return state.destPoints, state.destIndex, "destIndex", "selectedDest"
         else
             return state.sourcePoints, state.sourceIndex, "sourceIndex", "selectedSource"
         end
     else
+        -- UNLOAD: first screen (select_source) = sourcePoints, second (select_dest) = destPoints
         if isSource then
             return state.sourcePoints, state.sourceIndex, "sourceIndex", "selectedSource"
         else
@@ -779,10 +781,12 @@ function M.updateScreen(state)
 
     elseif state.screen == "confirm" then
         local src, dst
-        if state.mode == "unload" then
+        if state.mode == "load" then
+            -- LOAD: pick up from dest, drop at source
             src = state.selectedDest or { name = "?", x = 0, y = 0 }
             dst = state.selectedSource or { name = "?", x = 0, y = 0 }
         else
+            -- UNLOAD: pick up from source, drop at dest
             src = state.selectedSource or { name = "?", x = 0, y = 0 }
             dst = state.selectedDest or { name = "?", x = 0, y = 0 }
         end
@@ -845,7 +849,7 @@ function M.updateScreen(state)
             successSep.visible = true
         end
         local src, dst
-        if state.mode == "unload" then
+        if state.mode == "load" then
             src = state.selectedDest or { name = "?", x = 0, y = 0 }
             dst = state.selectedSource or { name = "?", x = 0, y = 0 }
         else
