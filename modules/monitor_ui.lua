@@ -742,7 +742,7 @@ function M.updateScreen(state)
             confirmLine7.visible = true
         end
         if confirmLine8 then
-            confirmLine8:setText(centerText(mode, w))
+            confirmLine8:setText(mode)
             confirmLine8.visible = true
         end
         if confirmRunBtn then confirmRunBtn.visible = true end
