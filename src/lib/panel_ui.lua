@@ -6,7 +6,7 @@
 local pixelui = require("lib.pixelui")
 
 ---@class PanelUI
-local PanelUI = {}
+local PanelUI = {}()
 PanelUI.__index = PanelUI
 
 local FIELDS = { "src_x", "src_y", "dst_x", "dst_y" }
@@ -27,8 +27,8 @@ local BUTTON_DEFS = {
 
 local MAX_LOG = 50
 
-local PICKUP_POINTS_FILE = "cccrane/data/pickup_points.lua"
-local DROP_POINTS_FILE = "cccrane/data/drop_points.lua"
+local PICKUP_POINTS_FILE = "/cccrane/data/pickup_points.lua"
+local DROP_POINTS_FILE = "/cccrane/data/drop_points.lua"
 
 -- ── Color palette ────────────────────────────────────────────────
 
@@ -404,7 +404,7 @@ function PanelUI:_buildButtons()
     -- EMRG STOP (right aligned, wider, red)
     local emrgBtn = a:createButton({
         x = self._termW - 12, y = L.BUTTONS,
-        width = 11, height = 1,
+        width = 10, height = 1,
         label = "EMRG",
         bg = C.bgEmrg, fg = C.fgWhite,
         border = { color = C.fgOrange },

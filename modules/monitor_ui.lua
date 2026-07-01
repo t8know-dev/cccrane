@@ -112,7 +112,7 @@ local function computeLayout(h_)
         statusY       = h_,
         nItems        = nItems,
         listStartY    = contentStart + 1,
-        navY          = contentStart + 1 + nItems,
+        navY          = h_ - 5,
         actionSelectY = h_ - 3,
         actionAbortY  = h_ - 2,
         mainBtnY1     = contentStart + math.floor(contentHeight * 0.3),
@@ -292,7 +292,7 @@ function M.createUI(monitor, stateModule)
     root:addChild(upBtn)
 
     downBtn = app:createButton({
-        x = navX + navBtnW + 1, y = ly.navY,
+        x = navX + navBtnW, y = ly.navY,
         width = navBtnW, height = 1,
         label = " \31 ",
         bg = C.btnGray, fg = C.fgWhite,
