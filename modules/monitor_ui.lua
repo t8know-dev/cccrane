@@ -20,7 +20,7 @@ local headerLabel
 local statusLabel
 
 -- Main screen
-local mainLoadBtn, mainUnloadBtn
+local mainLoadBtn, mainUnloadBtn, mainSep
 
 -- List screens (select_source / select_dest)
 local listTitle
@@ -115,8 +115,9 @@ local function computeLayout(h_)
         navY          = h_ - 5,
         actionSelectY = h_ - 3,
         actionAbortY  = h_ - 2,
-        mainBtnY1     = contentStart + math.floor(contentHeight * 0.3),
-        mainBtnY2     = contentStart + math.floor(contentHeight * 0.55),
+        mainBtnY1     = contentStart + math.max(0, math.floor((contentHeight - 9) / 2)),
+        sepY          = contentStart + math.max(0, math.floor((contentHeight - 9) / 2)) + 4,
+        mainBtnY2     = contentStart + math.max(0, math.floor((contentHeight - 9) / 2)) + 6,
     }
 end
 
@@ -182,7 +183,7 @@ function M.createUI(monitor, stateModule)
     root:addChild(statusLabel)
 
     ---------------------------------------------------------------------------
-    -- Main screen  (width=12, centered buttons, height=1)
+    -- Main screen  (width=12, centered buttons, height=3)
     ---------------------------------------------------------------------------
 
     local btnW = 12
@@ -190,8 +191,8 @@ function M.createUI(monitor, stateModule)
 
     mainLoadBtn = app:createButton({
         x = btnX, y = ly.mainBtnY1,
-        width = btnW, height = 1,
-        label = centerText("LOAD", btnW),
+        width = btnW, height = 3,
+        label = "LOAD",
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -213,8 +214,8 @@ function M.createUI(monitor, stateModule)
 
     mainUnloadBtn = app:createButton({
         x = btnX, y = ly.mainBtnY2,
-        width = btnW, height = 1,
-        label = centerText("UNLOAD", btnW),
+        width = btnW, height = 3,
+        label = "UNLOAD",
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -233,6 +234,16 @@ function M.createUI(monitor, stateModule)
         end,
     })
     root:addChild(mainUnloadBtn)
+
+    -- Separator between buttons
+    mainSep = app:createLabel({
+        x = 1, y = ly.sepY,
+        width = w, height = 1,
+        text = string.rep("─", w),
+        align = "center",
+        bg = C.bg, fg = C.sep,
+    })
+    root:addChild(mainSep)
 
     ---------------------------------------------------------------------------
     -- List screen
@@ -568,6 +579,7 @@ end
 local function hideAllDynamic()
     if mainLoadBtn then mainLoadBtn.visible = false end
     if mainUnloadBtn then mainUnloadBtn.visible = false end
+    if mainSep then mainSep.visible = false end
     if listTitle then listTitle.visible = false end
     for _, r in ipairs(itemRows) do r.visible = false end
     if upBtn then upBtn.visible = false end
@@ -638,6 +650,7 @@ function M.updateScreen(state)
 
     if state.screen == "main" then
         if mainLoadBtn then mainLoadBtn.visible = true end
+        if mainSep then mainSep.visible = true end
         if mainUnloadBtn then mainUnloadBtn.visible = true end
 
     elseif state.screen == "select_source" or state.screen == "select_dest" then
