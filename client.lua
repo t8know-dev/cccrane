@@ -132,11 +132,15 @@ local function executeCommand(command, params, seq)
         elseif command == "PICKANDDROP" then
             crane.gotoXY(params.src.x, params.src.y)
             if crane.isStopped() then aborted = true; return end
+            sendStatus()
             crane.pickup()
             if crane.isStopped() then aborted = true; return end
+            sendStatus()
             crane.gotoXY(params.dst.x, params.dst.y)
             if crane.isStopped() then aborted = true; return end
+            sendStatus()
             crane.drop()
+            sendStatus()
         elseif command == "STATUS_QUERY" then
             -- nothing to do, status sent below
         else

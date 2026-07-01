@@ -450,10 +450,19 @@ function M.createUI(monitor, stateModule)
         x = 1, y = ly.contentStart + 8,
         width = w, height = 1,
         text = "",
-        align = "center",
+        align = "left",
         bg = C.bg, fg = C.fgCyan,
     })
     root:addChild(confirmLine7)
+
+    confirmLine8 = app:createLabel({
+        x = 1, y = ly.contentStart + 9,
+        width = w, height = 1,
+        text = "",
+        align = "center",
+        bg = C.bg, fg = C.fgCyan,
+    })
+    root:addChild(confirmLine8)
 
     confirmRunBtn = app:createButton({
         x = 2, y = ly.actionSelectY,
@@ -592,6 +601,7 @@ local function hideAllDynamic()
     if confirmLine5 then confirmLine5.visible = false end
     if confirmLine6 then confirmLine6.visible = false end
     if confirmLine7 then confirmLine7.visible = false end
+    if confirmLine8 then confirmLine8.visible = false end
     if confirmRunBtn then confirmRunBtn.visible = false end
     if confirmAbortBtn then confirmAbortBtn.visible = false end
     if execTitle then execTitle.visible = false end
@@ -728,8 +738,12 @@ function M.updateScreen(state)
             confirmLine6.visible = true
         end
         if confirmLine7 then
-            confirmLine7:setText(centerText(mode, w))
+            confirmLine7:setText("Operation:")
             confirmLine7.visible = true
+        end
+        if confirmLine8 then
+            confirmLine8:setText(centerText(mode, w))
+            confirmLine8.visible = true
         end
         if confirmRunBtn then confirmRunBtn.visible = true end
         if confirmAbortBtn then confirmAbortBtn.visible = true end
