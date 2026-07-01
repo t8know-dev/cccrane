@@ -329,8 +329,15 @@ local function handleMessage(msg)
                 -- Fall back to inference for other commands (only if we never
                 -- received an explicit phase — avoids msgRouter's blunt STATUS
                 -- from overwriting the correct explicit phase)
-                local src = st.getState("selectedSource") or { x = 0, y = 0 }
-                local dst = st.getState("selectedDest") or { x = 0, y = 0 }
+                local mode = st.getState("mode")
+                local src, dst
+                if mode == "unload" then
+                    src = st.getState("selectedDest") or { x = 0, y = 0 }
+                    dst = st.getState("selectedSource") or { x = 0, y = 0 }
+                else
+                    src = st.getState("selectedSource") or { x = 0, y = 0 }
+                    dst = st.getState("selectedDest") or { x = 0, y = 0 }
+                end
                 phase = inferExecPhase(newPos, newSticker, src, dst)
             end
             if phase ~= nil and phase ~= panelState.execPhase then
@@ -479,10 +486,19 @@ st.subscribe(function(changes)
         local src = st.getState("selectedSource")
         local dst = st.getState("selectedDest")
         if src and dst then
-            sendCommand("PICKANDDROP", {
-                src = { x = src.x, y = src.y },
-                dst = { x = dst.x, y = dst.y },
-            })
+            local mode = st.getState("mode")
+            if mode == "unload" then
+                -- For UNLOAD: pick up from dest, drop at source
+                sendCommand("PICKANDDROP", {
+                    src = { x = dst.x, y = dst.y },
+                    dst = { x = src.x, y = src.y },
+                })
+            else
+                sendCommand("PICKANDDROP", {
+                    src = { x = src.x, y = src.y },
+                    dst = { x = dst.x, y = dst.y },
+                })
+            end
             st.updateState({ operationStatus = EXEC_LABELS[1] })
         end
     end

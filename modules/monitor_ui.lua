@@ -320,15 +320,13 @@ function M.createUI(monitor, stateModule)
             clickGuardTime = now
             local screen = st.getState("screen")
             if screen ~= "select_source" and screen ~= "select_dest" then return end
-            local idx = st.getState(screen == "select_source" and "sourceIndex" or "destIndex")
+            local items, idx, idxKey, selKey = getListInfo(st.getState())
             if idx > 1 then
                 idx = idx - 1
-                local items = st.getState(screen == "select_source" and "sourcePoints" or "destPoints")
-                local change = {
-                    [screen == "select_source" and "sourceIndex" or "destIndex"] = idx,
-                    [screen == "select_source" and "selectedSource" or "selectedDest"] = items[idx],
-                }
-                st.updateState(change)
+                st.updateState({
+                    [idxKey] = idx,
+                    [selKey] = items[idx],
+                })
             end
         end,
     })
@@ -345,15 +343,13 @@ function M.createUI(monitor, stateModule)
             clickGuardTime = now
             local screen = st.getState("screen")
             if screen ~= "select_source" and screen ~= "select_dest" then return end
-            local items = st.getState(screen == "select_source" and "sourcePoints" or "destPoints")
-            local idx = st.getState(screen == "select_source" and "sourceIndex" or "destIndex")
+            local items, idx, idxKey, selKey = getListInfo(st.getState())
             if idx < #items then
                 idx = idx + 1
-                local change = {
-                    [screen == "select_source" and "sourceIndex" or "destIndex"] = idx,
-                    [screen == "select_source" and "selectedSource" or "selectedDest"] = items[idx],
-                }
-                st.updateState(change)
+                st.updateState({
+                    [idxKey] = idx,
+                    [selKey] = items[idx],
+                })
             end
         end,
     })
@@ -665,6 +661,26 @@ local function hideAllDynamic()
     if connLostLine2 then connLostLine2.visible = false end
 end
 
+--- Get list info based on screen and operation mode.
+--- For UNLOAD mode, lists are swapped (select_source → destPoints, select_dest → sourcePoints).
+--- Returns: items, currentIndex, indexKey, selectedKey
+local function getListInfo(state)
+    local isSource = (state.screen == "select_source")
+    if state.mode == "unload" then
+        if isSource then
+            return state.destPoints, state.destIndex, "destIndex", "selectedDest"
+        else
+            return state.sourcePoints, state.sourceIndex, "sourceIndex", "selectedSource"
+        end
+    else
+        if isSource then
+            return state.sourcePoints, state.sourceIndex, "sourceIndex", "selectedSource"
+        else
+            return state.destPoints, state.destIndex, "destIndex", "selectedDest"
+        end
+    end
+end
+
 local function buildItemLabels(points)
     local labels = {}
     for i, p in ipairs(points) do
@@ -716,8 +732,7 @@ function M.updateScreen(state)
 
     elseif state.screen == "select_source" or state.screen == "select_dest" then
         local isSource = (state.screen == "select_source")
-        local items = isSource and state.sourcePoints or state.destPoints
-        local selIdx = isSource and state.sourceIndex or state.destIndex
+        local items, selIdx = getListInfo(state)
 
         if listTitle then
             listTitle:setText(isSource and "PICKUP" or "DROP")
@@ -763,8 +778,14 @@ function M.updateScreen(state)
         if listAbortBtn then listAbortBtn.visible = true end
 
     elseif state.screen == "confirm" then
-        local src = state.selectedSource or { name = "?", x = 0, y = 0 }
-        local dst = state.selectedDest or { name = "?", x = 0, y = 0 }
+        local src, dst
+        if state.mode == "unload" then
+            src = state.selectedDest or { name = "?", x = 0, y = 0 }
+            dst = state.selectedSource or { name = "?", x = 0, y = 0 }
+        else
+            src = state.selectedSource or { name = "?", x = 0, y = 0 }
+            dst = state.selectedDest or { name = "?", x = 0, y = 0 }
+        end
         local mode = (state.mode or "load"):upper()
 
         if confirmLine1 then
@@ -823,8 +844,14 @@ function M.updateScreen(state)
             successSep:setText(string.rep("-", w))
             successSep.visible = true
         end
-        local src = state.selectedSource or { name = "?", x = 0, y = 0 }
-        local dst = state.selectedDest or { name = "?", x = 0, y = 0 }
+        local src, dst
+        if state.mode == "unload" then
+            src = state.selectedDest or { name = "?", x = 0, y = 0 }
+            dst = state.selectedSource or { name = "?", x = 0, y = 0 }
+        else
+            src = state.selectedSource or { name = "?", x = 0, y = 0 }
+            dst = state.selectedDest or { name = "?", x = 0, y = 0 }
+        end
         if successSourceLine then
             successSourceLine:setText("> " .. truncate(src.name, w - 2))
             successSourceLine.visible = true
