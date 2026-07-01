@@ -192,7 +192,7 @@ function M.createUI(monitor, stateModule)
     mainLoadBtn = app:createButton({
         x = btnX, y = ly.mainBtnY1,
         width = btnW, height = 3,
-        border = 1,
+        border = true,
         label = "LOAD",
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
@@ -216,7 +216,7 @@ function M.createUI(monitor, stateModule)
     mainUnloadBtn = app:createButton({
         x = btnX, y = ly.mainBtnY2,
         width = btnW, height = 3,
-        border = 1,
+        border = true,
         label = "UNLOAD",
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
