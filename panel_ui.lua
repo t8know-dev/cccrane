@@ -27,6 +27,9 @@ local BUTTON_DEFS = {
 
 local MAX_LOG = 50
 
+local PICKUP_POINTS_FILE = "pickup_points.lua"
+local DROP_POINTS_FILE = "drop_points.lua"
+
 -- ── Color palette ────────────────────────────────────────────────
 
 local C = {
@@ -34,6 +37,7 @@ local C = {
     bgPanel   = colors.gray,
     bgBtn     = colors.blue,
     bgEmrg    = colors.red,
+    bgSave    = colors.green,
     fgWhite   = colors.white,
     fgLight   = colors.lightGray,
     fgGray    = colors.gray,
@@ -251,6 +255,17 @@ function PanelUI:_buildSourcePanel()
     })
     r:addChild(tbSrcY)
 
+    -- [+] save button
+    self._srcSaveBtn = a:createButton({
+        x = 21, y = L.INPUTS + 1,
+        width = 3, height = 1,
+        label = "[+]",
+        bg = C.bgPanel, fg = C.fgYellow,
+        border = { color = C.border },
+    })
+    r:addChild(self._srcSaveBtn)
+    self._srcSaveBtn:setOnClick(function() self:_onSaveClick("source") end)
+
     self._fields = {
         src_x = { tb = tbSrcX, label = lblX },
         src_y = { tb = tbSrcY, label = lblY },
@@ -326,6 +341,17 @@ function PanelUI:_buildDestPanel()
         border = { color = C.border },
     })
     r:addChild(tbDstY)
+
+    -- [+] save button
+    self._dstSaveBtn = a:createButton({
+        x = panX + 21, y = L.INPUTS + 1,
+        width = 3, height = 1,
+        label = "[+]",
+        bg = C.bgPanel, fg = C.fgYellow,
+        border = { color = C.border },
+    })
+    r:addChild(self._dstSaveBtn)
+    self._dstSaveBtn:setOnClick(function() self:_onSaveClick("dest") end)
 
     self._fields.dst_x = { tb = tbDstX, label = lblX }
     self._fields.dst_y = { tb = tbDstY, label = lblY }
@@ -543,6 +569,13 @@ function PanelUI:_patchRootEvents()
         if event == "term_resize" then
             self_:_onResize()
         end
+        if event == "key" then
+            local kc = ...
+            if kc == keys.escape and self_._popupFrame then
+                self_:_closePopup()
+                return true
+            end
+        end
         return orig and orig(self, event, ...) or false
     end
 end
@@ -624,6 +657,164 @@ function PanelUI:_onClick(action)
     elseif action == "EMERGENCY_STOP" then
         cb("EMERGENCY_STOP")
     end
+end
+
+-- ── Save Point Methods ────────────────────────────────────────────
+
+function PanelUI:_onSaveClick(pointType)
+    local xStr, yStr
+    if pointType == "source" then
+        xStr = self:getField("src_x")
+        yStr = self:getField("src_y")
+    else
+        xStr = self:getField("dst_x")
+        yStr = self:getField("dst_y")
+    end
+    local x = tonumber(xStr)
+    local y = tonumber(yStr)
+    if not x or not y then
+        self:addLogLine("Set " .. pointType .. " coordinates first", C.warn)
+        return
+    end
+    self:_showSavePopup(pointType, x, y)
+end
+
+function PanelUI:_showSavePopup(pointType, x, y)
+    if self._popupFrame then return end
+
+    local W, H = self._termW, self._termH
+    local pw, ph = 30, 9
+    local px = math.floor((W - pw) / 2) + 1
+    local py = math.floor((H - ph) / 2) + 1
+
+    local a = self._app
+    local r = self._root
+
+    -- Main popup frame
+    local frame = a:createFrame({
+        x = px, y = py, width = pw, height = ph,
+        bg = C.bgPanel,
+        border = { color = C.border },
+    })
+    r:addChild(frame)
+
+    -- Title
+    local title = a:createLabel({
+        x = px + 1, y = py,
+        width = pw - 2, height = 1,
+        text = (pointType == "source") and " Save source point " or " Save dest point ",
+        bg = C.bgPanel, fg = C.fgYellow,
+    })
+    r:addChild(title)
+
+    -- Coordinates display
+    local coord = a:createLabel({
+        x = px + 2, y = py + 2,
+        width = pw - 4, height = 1,
+        text = "X=" .. x .. "  Y=" .. y,
+        bg = C.bgPanel, fg = C.fgLight,
+    })
+    r:addChild(coord)
+
+    -- Name textbox
+    local nameTb = a:createTextBox({
+        x = px + 2, y = py + 4,
+        width = pw - 4, height = 1,
+        maxLength = 20,
+        placeholder = "Enter point name...",
+        placeholderColor = C.border,
+        bg = C.bgDark, fg = C.fgWhite,
+        border = { color = C.border },
+    })
+    r:addChild(nameTb)
+    a:setFocus(nameTb)
+
+    -- Cancel button
+    local cancel = a:createButton({
+        x = px + 2, y = py + ph - 2,
+        width = 9, height = 1,
+        label = " Cancel ",
+        bg = C.bgPanel, fg = C.fgLight,
+        border = { color = C.border },
+    })
+    r:addChild(cancel)
+    cancel:setOnClick(function() self:_closePopup() end)
+
+    -- Save button
+    local save = a:createButton({
+        x = px + pw - 11, y = py + ph - 2,
+        width = 9, height = 1,
+        label = " Save ",
+        bg = C.bgSave, fg = C.fgWhite,
+        border = { color = C.border },
+    })
+    r:addChild(save)
+    save:setOnClick(function()
+        local name = nameTb:getText():gsub("^%s*(.-)%s*$", "%1")
+        if name == "" then
+            self:addLogLine("Enter a point name", C.warn)
+            return
+        end
+        self:_savePoint(pointType, name, x, y)
+    end)
+
+    -- Store popup references
+    self._popupFrame = frame
+    self._popupTitle = title
+    self._popupCoord = coord
+    self._popupNameTb = nameTb
+    self._popupCancel = cancel
+    self._popupSave = save
+end
+
+function PanelUI:_closePopup()
+    if not self._popupFrame then return end
+    self._popupFrame.visible = false
+    if self._popupTitle  then self._popupTitle.visible = false end
+    if self._popupCoord  then self._popupCoord.visible = false end
+    if self._popupNameTb then self._popupNameTb.visible = false end
+    if self._popupCancel then self._popupCancel.visible = false end
+    if self._popupSave   then self._popupSave.visible = false end
+    self._popupFrame = nil
+    self._popupTitle = nil
+    self._popupCoord = nil
+    self._popupNameTb = nil
+    self._popupCancel = nil
+    self._popupSave = nil
+end
+
+function PanelUI:_savePoint(pointType, name, x, y)
+    local filePath = (pointType == "source") and PICKUP_POINTS_FILE or DROP_POINTS_FILE
+
+    -- Load existing points
+    local points = {}
+    if fs.exists(filePath) then
+        local ok, result = pcall(dofile, filePath)
+        if ok and type(result) == "table" then
+            points = result
+        else
+            self:addLogLine("Warning: corrupt " .. filePath .. ", starting fresh", C.warn)
+        end
+    end
+
+    -- Add / update point
+    points[name] = { x = x, y = y }
+
+    -- Atomic write (temp file + rename)
+    local tmpPath = filePath .. ".tmp"
+    local f = fs.open(tmpPath, "w")
+    if not f then
+        self:addLogLine("Error: cannot write " .. filePath, C.err)
+        return
+    end
+    f.write("return ")
+    f.write(textutils.serialize(points, { compact = true }))
+    f.close()
+    fs.delete(filePath)
+    fs.move(tmpPath, filePath)
+
+    self:addLogLine("Saved " .. pointType .. " point: " .. name .. " (" .. x .. "," .. y .. ")", C.ok)
+    self:_closePopup()
 end
 
 -- ── Public API ────────────────────────────────────────────────────
