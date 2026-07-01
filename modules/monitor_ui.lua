@@ -86,13 +86,7 @@ local function centerText(text, width)
     return string.rep(" ", pad) .. text .. string.rep(" ", rightPad)
 end
 
--- Center text then shift 1 char right (for RUN/SELECT/ABORT buttons)
-local function rightOfCenter(text, width)
-    width = width or w
-    local pad = math.max(0, math.floor((width - #text) / 2) + 1)
-    local rightPad = math.max(0, width - #text - pad)
-    return string.rep(" ", pad) .. text .. string.rep(" ", rightPad)
-end
+-- Center text helper
 
 local function computeLayout(h_)
     local contentStart = 3
@@ -101,7 +95,7 @@ local function computeLayout(h_)
 
     local reserved = 2  -- title + nav row
     local maxItems = math.max(1, contentHeight - reserved)
-    local nItems = math.min(maxItems, 8)
+    local nItems = math.min(maxItems, 14)
 
     return {
         headerY       = 1,
@@ -165,7 +159,7 @@ function M.createUI(monitor, stateModule)
     headerLabel = app:createLabel({
         x = 1, y = ly.headerY,
         width = w, height = 1,
-        text = centerText("CCrane", w),
+        text = centerText("CCRANE", w),
         align = "center",
         bg = C.headerBg,
         fg = C.headerFg,
@@ -187,7 +181,7 @@ function M.createUI(monitor, stateModule)
     ---------------------------------------------------------------------------
 
     local btnW = 13
-    local btnX = math.floor((w - btnW) / 2)
+    local btnX = math.floor((w - btnW) / 2) + 1
 
     mainLoadBtn = app:createButton({
         x = btnX, y = ly.mainBtnY1,
@@ -241,7 +235,7 @@ function M.createUI(monitor, stateModule)
     mainSep = app:createLabel({
         x = 1, y = ly.sepY,
         width = w, height = 1,
-        text = string.rep("─", w),
+        text = string.rep("-", w),
         align = "center",
         bg = C.bg, fg = C.sep,
     })
@@ -334,7 +328,7 @@ function M.createUI(monitor, stateModule)
     selectBtn = app:createButton({
         x = 2, y = ly.actionSelectY,
         width = 13, height = 1,
-        label = rightOfCenter("SELECT", 13),
+        label = centerText("SELECT", 13),
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -353,7 +347,7 @@ function M.createUI(monitor, stateModule)
     listAbortBtn = app:createButton({
         x = 2, y = ly.actionAbortY,
         width = 13, height = 1,
-        label = rightOfCenter("ABORT", 13),
+        label = centerText("ABORT", 13),
         bg = C.btnRed, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -446,7 +440,7 @@ function M.createUI(monitor, stateModule)
     confirmRunBtn = app:createButton({
         x = 2, y = ly.actionSelectY,
         width = 13, height = 1,
-        label = rightOfCenter("RUN", 13),
+        label = centerText("RUN", 13),
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -462,7 +456,7 @@ function M.createUI(monitor, stateModule)
     confirmAbortBtn = app:createButton({
         x = 2, y = ly.actionAbortY,
         width = 13, height = 1,
-        label = rightOfCenter("ABORT", 13),
+        label = centerText("ABORT", 13),
         bg = C.btnRed, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -499,7 +493,7 @@ function M.createUI(monitor, stateModule)
     execAbortBtn = app:createButton({
         x = 2, y = ly.actionSelectY,
         width = 13, height = 1,
-        label = rightOfCenter("ABORT", 13),
+        label = centerText("ABORT", 13),
         bg = C.btnRed, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
