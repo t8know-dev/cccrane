@@ -33,7 +33,7 @@ return {
     MOVE_SETTLE_DELAY = 0.2,
 
     -- Peripheral names (as seen by peripheral.wrap)
-    GEAR_PERIPHERAL = "Create_SequencedGearShift_13",
+    GEAR_PERIPHERAL = "Create_SequencedGearshift_13",
     RELAY_PERIPHERAL = "redstone_relay_61",
 
     -- Modem sides for ECNet2 communication (one per physical computer)
