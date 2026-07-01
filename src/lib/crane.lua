@@ -1,9 +1,9 @@
--- crane-lib.lua v1.5.6 — CC: Create crane controller library
+-- crane.lua v1.5.6 — CC: Create crane controller library
 -- Extracted from crane.lua for use as a reusable module.
--- Loads configuration from config.lua in the same directory.
+-- Loads configuration from src/config.lua.
 --
 -- Usage:
---   local crane = dofile("cccrane/crane-lib.lua")
+--   local crane = dofile("cccrane/src/lib/crane.lua")
 --   crane.init()
 --   crane.gotoXY(10, 5)
 --   crane.pickup()
@@ -16,7 +16,7 @@
 --   was interrupted mid-operation (chunk unload / Ctrl+T), the next run will
 --   detect craneRunning=true and perform a full homing cycle.
 
-local cfg = dofile("cccrane/config.lua")
+local cfg = dofile("cccrane/src/config.lua")
 
 local STATE_FILE = ".crane-state"
 local STATE_FILE_TMP = ".crane-state.tmp"

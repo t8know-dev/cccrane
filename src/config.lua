@@ -47,6 +47,6 @@ return {
     MONITOR_PERIPHERAL = "monitor_15",
 
     -- Point file paths (for crane-load-unload.lua)
-    PICKUP_POINTS_FILE = "cccrane/pickup_points.lua",
-    DROP_POINTS_FILE   = "cccrane/drop_points.lua",
+    PICKUP_POINTS_FILE = "cccrane/data/pickup_points.lua",
+    DROP_POINTS_FILE   = "cccrane/data/drop_points.lua",
 }

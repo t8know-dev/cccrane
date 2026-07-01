@@ -2,21 +2,21 @@
 --
 -- Completely independent from crane-panel.lua. Runs on a 2×1 monitor (30 lines)
 -- and provides a wizard-style UI for loading/unloading containers from train wagons.
--- Uses point files (pickup_points.lua / drop_points.lua) for source/destination lists.
+-- Uses point files (data/pickup_points.lua / data/drop_points.lua) for source/destination lists.
 --
 -- Usage: crane-load-unload
 --
 -- The panel's ECNet2 address is printed on startup — copy it to
--- crane-remote-config.lua on the crane computer.
+-- src/remote_config.lua on the crane computer.
 
 local ecnet2 = require "ecnet2"
 local random = require "ccryptolib.random"
 random.initWithTiming()
 
-local pixelui = require("pixelui")
+local pixelui = require("lib.pixelui")
 
 -- Load config
-local cfg = dofile("cccrane/config.lua")
+local cfg = dofile("cccrane/src/config.lua")
 
 -- Load state + UI modules (absolute paths for reliability, same pattern as ccunloader)
 local function loadMod(path)

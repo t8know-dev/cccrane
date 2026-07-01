@@ -13,7 +13,7 @@ local ecnet2 = require "ecnet2"
 local random = require "ccryptolib.random"
 random.initWithTiming()
 
-local PanelUI = require("panel_ui")
+local PanelUI = require("src.lib.panel_ui")
 
 ------------------------------------------------------------
 -- STATE

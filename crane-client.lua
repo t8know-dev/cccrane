@@ -6,16 +6,16 @@
 -- Usage: crane-client
 --
 -- Requires:
---   crane-remote-config.lua  (PANEL_ADDRESS, heartbeat, reconnect settings)
---   crane-lib.lua            (crane hardware control library)
+--   src/remote_config.lua  (PANEL_ADDRESS, heartbeat, reconnect settings)
+--   src/lib/crane.lua      (crane hardware control library)
 --   ccryptolib/              (crypto primitives for ECNet2)
 
 local ecnet2 = require "ecnet2"
 local random = require "ccryptolib.random"
 random.initWithTiming()
 
-local rc = dofile("cccrane/crane-remote-config.lua")
-local crane = dofile("cccrane/crane-lib.lua")
+local rc = dofile("cccrane/src/remote_config.lua")
+local crane = dofile("cccrane/src/lib/crane.lua")
 
 ecnet2.open("top")
 

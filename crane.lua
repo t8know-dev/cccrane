@@ -1,9 +1,9 @@
 -- crane.lua v1.5.6 — CC: Create crane controller
--- Thin CLI wrapper around crane-lib.lua.
+-- Thin CLI wrapper around src/lib/crane.lua.
 --
 -- Usage: crane <srcX> <srcY> <dstX> <dstY>
 
-local crane = dofile("cccrane/crane-lib.lua")
+local crane = dofile("cccrane/src/lib/crane.lua")
 local cfg = crane.config
 
 ------------------------------------------------------------

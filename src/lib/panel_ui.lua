@@ -3,7 +3,7 @@
 -- Redesigned with visual hierarchy: bordered frames, status indicators,
 -- loading indicator, and color-coded status elements.
 
-local pixelui = require("pixelui")
+local pixelui = require("lib.pixelui")
 
 ---@class PanelUI
 local PanelUI = {}
@@ -27,8 +27,8 @@ local BUTTON_DEFS = {
 
 local MAX_LOG = 50
 
-local PICKUP_POINTS_FILE = "pickup_points.lua"
-local DROP_POINTS_FILE = "drop_points.lua"
+local PICKUP_POINTS_FILE = "cccrane/data/pickup_points.lua"
+local DROP_POINTS_FILE = "cccrane/data/drop_points.lua"
 
 -- ── Color palette ────────────────────────────────────────────────
 

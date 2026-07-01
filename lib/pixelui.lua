@@ -9,7 +9,7 @@ local table_pack = table.pack or function(...)
 end
 local table_unpack = assert(table.unpack, "table.unpack unavailable")
 local expect = require("cc.expect").expect
-local shrekbox = require("shrekbox")
+local shrekbox = require("lib.shrekbox")
 
 ---@alias PixelUI.Color integer
 ---@alias ccTweaked.colors.color integer

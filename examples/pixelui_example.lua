@@ -1,6 +1,6 @@
 ---@diagnostic disable "undefined-field"
 local colors = assert(rawget(_G, "colors"), "colors API unavailable")
-local pixelui = require("pixelui")
+local pixelui = require("lib.pixelui")
 
 ---@type PixelUI.App
 local app = pixelui.create({
