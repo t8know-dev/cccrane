@@ -411,7 +411,9 @@ end
 --- Trigger an emergency stop. Stops the motor immediately.
 function craneEmergencyStop()
     EMERGENCY_STOP = true
-    gear.stop()
+    if gear then
+        gear.setSpeed(0)
+    end
 end
 
 --- Return the current stop-flag state.
