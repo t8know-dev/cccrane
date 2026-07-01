@@ -42,4 +42,11 @@ return {
     -- motor moves in the opposite direction from what the coordinate system expects.
     INVERSE_X = false,
     INVERSE_Y = false,
+
+    -- Monitor peripheral name (for crane-load-unload.lua)
+    MONITOR_PERIPHERAL = "monitor_0",
+
+    -- Point file paths (for crane-load-unload.lua)
+    PICKUP_POINTS_FILE = "cccrane/pickup_points.lua",
+    DROP_POINTS_FILE   = "cccrane/drop_points.lua",
 }
