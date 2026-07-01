@@ -255,13 +255,12 @@ function PanelUI:_buildSourcePanel()
     })
     r:addChild(tbSrcY)
 
-    -- [+] save button
+    -- [+] clickable label
     self._srcSaveBtn = a:createButton({
         x = 21, y = L.INPUTS + 1,
         width = 3, height = 1,
         label = "[+]",
         bg = C.bgPanel, fg = C.fgYellow,
-        border = { color = C.border },
     })
     r:addChild(self._srcSaveBtn)
     self._srcSaveBtn:setOnClick(function() self:_onSaveClick("source") end)
@@ -342,13 +341,12 @@ function PanelUI:_buildDestPanel()
     })
     r:addChild(tbDstY)
 
-    -- [+] save button
+    -- [+] clickable label
     self._dstSaveBtn = a:createButton({
         x = panX + 21, y = L.INPUTS + 1,
         width = 3, height = 1,
         label = "[+]",
         bg = C.bgPanel, fg = C.fgYellow,
-        border = { color = C.border },
     })
     r:addChild(self._dstSaveBtn)
     self._dstSaveBtn:setOnClick(function() self:_onSaveClick("dest") end)
