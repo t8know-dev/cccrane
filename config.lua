@@ -44,7 +44,7 @@ return {
     INVERSE_Y = false,
 
     -- Monitor peripheral name (for crane-load-unload.lua)
-    MONITOR_PERIPHERAL = "monitor_14",
+    MONITOR_PERIPHERAL = "monitor_15",
 
     -- Point file paths (for crane-load-unload.lua)
     PICKUP_POINTS_FILE = "cccrane/pickup_points.lua",

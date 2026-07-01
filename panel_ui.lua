@@ -13,9 +13,9 @@ local FIELDS = { "src_x", "src_y", "dst_x", "dst_y" }
 
 local FIELD_DEFS = {
     src_x = { col = 3,  row = 2, label = "X", section = "source" },
-    src_y = { col = 12, row = 2, label = "Y", section = "source" },
+    src_y = { col = 11, row = 2, label = "Y", section = "source" },
     dst_x = { col = 3,  row = 2, label = "X", section = "dest" },
-    dst_y = { col = 12, row = 2, label = "Y", section = "dest" },
+    dst_y = { col = 11, row = 2, label = "Y", section = "dest" },
 }
 
 local BUTTON_DEFS = {
@@ -236,7 +236,7 @@ function PanelUI:_buildSourcePanel()
 
     -- Y field
     local lblY = a:createLabel({
-        x = 12, y = L.INPUTS + 1,
+        x = 11, y = L.INPUTS + 1,
         width = 2,
         height = 1,
         text = "Y:",
@@ -246,7 +246,7 @@ function PanelUI:_buildSourcePanel()
     r:addChild(lblY)
 
     local tbSrcY = a:createTextBox({
-        x = 14, y = L.INPUTS + 1,
+        x = 13, y = L.INPUTS + 1,
         width = 5, height = 1,
         numericOnly = true, maxLength = 5,
         placeholder = "     ", placeholderColor = C.border,
@@ -322,7 +322,7 @@ function PanelUI:_buildDestPanel()
 
     -- Y field
     local lblY = a:createLabel({
-        x = panX + 12, y = L.INPUTS + 1,
+        x = panX + 11, y = L.INPUTS + 1,
         width = 2,
         height = 1,
         text = "Y:",
@@ -332,7 +332,7 @@ function PanelUI:_buildDestPanel()
     r:addChild(lblY)
 
     local tbDstY = a:createTextBox({
-        x = panX + 14, y = L.INPUTS + 1,
+        x = panX + 13, y = L.INPUTS + 1,
         width = 5, height = 1,
         numericOnly = true, maxLength = 5,
         placeholder = "     ", placeholderColor = C.border,
