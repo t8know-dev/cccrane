@@ -112,7 +112,6 @@ local function sendCommand(command, params)
     }
 
     ui:addLogLine(timestamp() .. " Sending: " .. command)
-    ui:showLoading(true)
     local ok = pcall(panelState.connection.send, panelState.connection, msg)
     if not ok then
         ui:addLogLine("SEND FAILED — connection lost", colors.red)
@@ -171,7 +170,6 @@ local function handleMessage(msg)
             ui:addLogLine(timestamp() .. "  " .. body.command_seq .. " ERROR: " .. ackMsg, colors.red)
         end
         ui:setPending(false)
-        ui:showLoading(false)
 
     elseif body.message_type == "STATUS" then
         local st = body.status or {}

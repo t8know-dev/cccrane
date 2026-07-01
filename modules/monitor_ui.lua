@@ -233,7 +233,10 @@ function M.createUI(monitor, stateModule)
             if now - clickGuardTime < 0.15 then return end
             clickGuardTime = now
             if st.getState("screen") ~= "main" then return end
-            if not st.getState("connected") or not st.getState("registered") then return end
+            if not st.getState("connected") or not st.getState("registered") then
+                st.updateState({ screen = "connection_lost" })
+                return
+            end
             st.updateState({
                 mode = "load",
                 sourceIndex = 1,
@@ -257,7 +260,10 @@ function M.createUI(monitor, stateModule)
             if now - clickGuardTime < 0.15 then return end
             clickGuardTime = now
             if st.getState("screen") ~= "main" then return end
-            if not st.getState("connected") or not st.getState("registered") then return end
+            if not st.getState("connected") or not st.getState("registered") then
+                st.updateState({ screen = "connection_lost" })
+                return
+            end
             st.updateState({
                 mode = "unload",
                 sourceIndex = 1,
@@ -485,6 +491,10 @@ function M.createUI(monitor, stateModule)
             if now - clickGuardTime < 0.15 then return end
             clickGuardTime = now
             if st.getState("screen") ~= "confirm" then return end
+            if not st.getState("connected") or not st.getState("registered") then
+                st.updateState({ screen = "connection_lost" })
+                return
+            end
             st.resetOperation()
             st.updateState({ screen = "executing", operationStatus = "Starting..." })
         end,
@@ -519,8 +529,16 @@ function M.createUI(monitor, stateModule)
     })
     root:addChild(execTitle)
 
-    -- Multi-line status with word wrap (5 lines should cover most messages)
-    for i = 1, 5 do
+    -- Multi-line status with word wrap (first line shares bottom row with copyright)
+    execStatusLines[1] = app:createLabel({
+        x = 1, y = ly.statusY,
+        width = math.max(1, w - 9), height = 1,
+        text = "",
+        align = "left",
+        bg = C.bg, fg = C.fgLight,
+    })
+    root:addChild(execStatusLines[1])
+    for i = 2, 5 do
         execStatusLines[i] = app:createLabel({
             x = 1, y = ly.contentStart + 3 + (i - 1),
             width = w, height = 1,
@@ -623,15 +641,6 @@ local function hideAllDynamic()
     if errorLine2 then errorLine2.visible = false end
     if connLostLine1 then connLostLine1.visible = false end
     if connLostLine2 then connLostLine2.visible = false end
-end
-
-local function updateMainButtons(state)
-    state = state or st.getState()
-    local connected = state.connected and state.registered
-    local bg = connected and C.btnBlue or C.btnGray
-    local fg = connected and C.fgWhite or C.fgGray
-    if mainLoadBtn then mainLoadBtn.bg = bg; mainLoadBtn.fg = fg end
-    if mainUnloadBtn then mainUnloadBtn.bg = bg; mainUnloadBtn.fg = fg end
 end
 
 local function buildItemLabels(points)
@@ -763,6 +772,7 @@ function M.updateScreen(state)
         if confirmAbortBtn then confirmAbortBtn.visible = true end
 
     elseif state.screen == "executing" then
+        if statusLabel then statusLabel.visible = false end  -- execStatusLines[1] uses its row
         local mode = (state.mode or "load"):upper()
         if execTitle then
             execTitle:setText(centerText(mode, w))
@@ -810,6 +820,7 @@ end
 function M.updateProgress(state)
     if not app then return end
     if state.screen == "executing" then
+        if statusLabel then statusLabel.visible = false end
         local lines = wrapText(state.operationStatus or "", w, #execStatusLines)
         for i, l in ipairs(execStatusLines) do
             l:setText(lines[i] or "")

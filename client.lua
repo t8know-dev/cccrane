@@ -58,10 +58,9 @@ end
 --- Send a STATUS event to the panel.
 --- Includes currentPhase when a PICKANDDROP operation is active,
 --- so msgRouter periodic STATUS also carries the right phase.
---- @param explicitPhase number|nil optional override for the phase field
-local function sendStatus(explicitPhase)
+local function sendStatus()
     local st = crane.getState()
-    local phase = explicitPhase or currentPhase
+    local phase = currentPhase
     local status = {
         position = { st.currentX, st.currentY },
         sticker = st.stickerOn,

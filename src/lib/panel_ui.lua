@@ -11,20 +11,6 @@ PanelUI.__index = PanelUI
 
 local FIELDS = { "src_x", "src_y", "dst_x", "dst_y" }
 
-local FIELD_DEFS = {
-    src_x = { col = 3,  row = 2, label = "X", section = "source" },
-    src_y = { col = 11, row = 2, label = "Y", section = "source" },
-    dst_x = { col = 3,  row = 2, label = "X", section = "dest" },
-    dst_y = { col = 11, row = 2, label = "Y", section = "dest" },
-}
-
-local BUTTON_DEFS = {
-    { action = "PICKANDDROP", label = "RUN",  key = "run" },
-    { action = "GOTO",        label = "GOTO", key = "goto" },
-    { action = "HOME",        label = "HOME", key = "home" },
-    { action = "EMERGENCY_STOP", label = "EMRG STOP", key = "emrg" },
-}
-
 local MAX_LOG = 50
 
 local PICKUP_POINTS_FILE = "/cccrane/data/pickup_points.lua"
@@ -97,8 +83,6 @@ function PanelUI.create(opts)
 
     self:_patchTextBoxTab()
     self:_patchRootEvents()
-    self:_hookFieldChanges()
-
     self:_updateButtons()
     self:_updateStatus()
 
@@ -622,18 +606,6 @@ function PanelUI:_onResize()
     end
 end
 
--- ── Field Change Hook ─────────────────────────────────────────────
-
-function PanelUI:_hookFieldChanges()
-    for key, meta in pairs(self._fields) do
-        meta.tb:setOnChange(function(_, text)
-            if self._callbacks.onFieldChange then
-                self._callbacks.onFieldChange(key, text or "")
-            end
-        end)
-    end
-end
-
 -- ── Button Click Dispatch ─────────────────────────────────────────
 
 function PanelUI:_onClick(action)
@@ -844,15 +816,6 @@ function PanelUI:run()
     self._app:run()
 end
 
-function PanelUI:stop()
-    local a = self._app
-    if a and a.stop then a:stop() end
-end
-
-function PanelUI:getApp()
-    return self._app
-end
-
 ---@param connected boolean
 ---@param craneId string|nil
 function PanelUI:setConnected(connected, craneId)
@@ -870,7 +833,6 @@ end
 
 function PanelUI:setPending(pending)
     self._state.pending = pending
-    self:showLoading(pending)
     self:_updateButtons()
     self:_updateStatus()
 end
@@ -900,11 +862,6 @@ end
 --- Show or hide the pending loading indicator.
 --- Visual feedback is handled by the status dot in the status frame.
 ---@param visible boolean
-function PanelUI:showLoading(visible)
-    -- Visual loading state is shown via the status dot/status text
-    -- (updated automatically by setPending/setCraneStatus)
-end
-
 ---@param key "src_x"|"src_y"|"dst_x"|"dst_y"
 ---@return string
 function PanelUI:getField(key)
@@ -932,13 +889,6 @@ function PanelUI:addLogLine(text, color)
     table.insert(lines, { text = text, color = color or C.fgLight })
     if #lines > MAX_LOG then table.remove(lines, 1) end
     self:_refreshLog()
-end
-
-function PanelUI:clearFields()
-    for _, key in ipairs(FIELDS) do
-        local m = self._fields[key]
-        if m then m.tb:setText("") end
-    end
 end
 
 -- ── Internal Render Updates ───────────────────────────────────────
