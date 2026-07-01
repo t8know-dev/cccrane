@@ -19,9 +19,8 @@ local w, h               -- monitor dimensions
 local headerLabel
 local statusLabel
 
--- Main screen (height=3 buttons with label overlay)
+-- Main screen
 local mainLoadBtn, mainUnloadBtn
-local mainLoadLabel, mainUnloadLabel
 
 -- List screens (select_source / select_dest)
 local listTitle
@@ -30,7 +29,7 @@ local upBtn, downBtn
 local selectBtn, listAbortBtn
 
 -- Confirm screen
-local confirmLine1, confirmLine2, confirmLine3, confirmLine4, confirmLine5, confirmLine6
+local confirmLine1, confirmLine2, confirmLine3, confirmLine4, confirmLine5, confirmLine6, confirmLine7
 local confirmRunBtn, confirmAbortBtn
 
 -- Executing screen
@@ -47,7 +46,7 @@ local errorLine1, errorLine2
 local connLostLine1, connLostLine2
 
 -- Layout info
-local VISIBLE_ITEMS = 3      -- max visible items in list (adjusted in createUI)
+local VISIBLE_ITEMS = 3
 
 -- Colors
 local C = {
@@ -69,14 +68,12 @@ local C = {
     sep        = colors.gray,
 }
 
--- Guard against CC:Tweaked double-event dispatch (monitor_touch + mouse_click).
 local clickGuardTime = 0
 
 -------------------------------------------------------------------------------
 -- Helpers
 -------------------------------------------------------------------------------
 
---- Truncate text to maxLen; if it exceeds maxLen, replace last two chars with "..".
 local function truncate(text, maxLen)
     if #text <= maxLen then return text end
     return text:sub(1, maxLen - 2) .. ".."
@@ -89,33 +86,25 @@ local function centerText(text, width)
     return string.rep(" ", pad) .. text .. string.rep(" ", rightPad)
 end
 
---- Compute screen layout rows from monitor height.
---- Bottom 3 rows are reserved for action buttons (SELECT/ABORT/RUN/STOP):
----   h-3 = primary action (SELECT / RUN / STOP)
----   h-2 = secondary action (ABORT)
----   h-1 = separator
----   h   = status
---- Content area: rows 3 to h-4
+-- Center text then shift 1 char left (for RUN/ABORT buttons)
+local function leftOfCenter(text, width)
+    width = width or w
+    local pad = math.max(0, math.floor((width - #text) / 2) - 1)
+    local rightPad = math.max(0, width - #text - pad)
+    return string.rep(" ", pad) .. text .. string.rep(" ", rightPad)
+end
+
 local function computeLayout(h_)
     local contentStart = 3
     local contentEnd = h_ - 4
     local contentHeight = contentEnd - contentStart + 1
 
-    -- Items: title(1) + items(N) + nav(1) fits within contentHeight
     local reserved = 2  -- title + nav row
     local maxItems = math.max(1, contentHeight - reserved)
     local nItems = math.min(maxItems, 8)
 
-    -- Main buttons: center them in content area
-    local mainBtnH = 3
-    local mainAreaH = contentHeight - mainBtnH * 2
-    local gap = math.floor(mainAreaH * 0.25)
-    local mainBtnY1 = contentStart + gap
-    local mainBtnY2 = contentStart + gap + mainBtnH + math.floor(mainAreaH * 0.5)
-
     return {
         headerY       = 1,
-        sep1Y         = 2,
         contentStart  = contentStart,
         contentEnd    = contentEnd,
         contentHeight = contentHeight,
@@ -124,12 +113,10 @@ local function computeLayout(h_)
         nItems        = nItems,
         listStartY    = contentStart + 1,
         navY          = contentStart + 1 + nItems,
-        -- Action buttons: always at fixed rows from bottom
         actionSelectY = h_ - 3,
         actionAbortY  = h_ - 2,
-        mainBtnY1     = mainBtnY1,
-        mainBtnY2     = mainBtnY2,
-        mainBtnH      = mainBtnH,
+        mainBtnY1     = contentStart + math.floor(contentHeight * 0.3),
+        mainBtnY2     = contentStart + math.floor(contentHeight * 0.55),
     }
 end
 
@@ -171,7 +158,7 @@ function M.createUI(monitor, stateModule)
     print("[monitor] size: " .. w .. "x" .. h .. ", visible items: " .. VISIBLE_ITEMS)
 
     ---------------------------------------------------------------------------
-    -- Shared widgets
+    -- Shared
     ---------------------------------------------------------------------------
 
     headerLabel = app:createLabel({
@@ -195,13 +182,16 @@ function M.createUI(monitor, stateModule)
     root:addChild(statusLabel)
 
     ---------------------------------------------------------------------------
-    -- Main screen widgets — height=3 buttons with centered label overlay
+    -- Main screen  (width=12, centered buttons, height=1)
     ---------------------------------------------------------------------------
 
+    local btnW = 12
+    local btnX = math.floor((w - btnW) / 2)
+
     mainLoadBtn = app:createButton({
-        x = 1, y = ly.mainBtnY1,
-        width = w, height = ly.mainBtnH,
-        label = "",
+        x = btnX, y = ly.mainBtnY1,
+        width = btnW, height = 1,
+        label = centerText("LOAD", btnW),
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -221,20 +211,10 @@ function M.createUI(monitor, stateModule)
     })
     root:addChild(mainLoadBtn)
 
-    mainLoadLabel = app:createLabel({
-        x = 1, y = ly.mainBtnY1 + math.floor(ly.mainBtnH / 2),
-        width = w, height = 1,
-        text = centerText("LOAD", w),
-        align = "center",
-        bg = C.btnBlue,
-        fg = C.fgWhite,
-    })
-    root:addChild(mainLoadLabel)
-
     mainUnloadBtn = app:createButton({
-        x = 1, y = ly.mainBtnY2,
-        width = w, height = ly.mainBtnH,
-        label = "",
+        x = btnX, y = ly.mainBtnY2,
+        width = btnW, height = 1,
+        label = centerText("UNLOAD", btnW),
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -254,18 +234,8 @@ function M.createUI(monitor, stateModule)
     })
     root:addChild(mainUnloadBtn)
 
-    mainUnloadLabel = app:createLabel({
-        x = 1, y = ly.mainBtnY2 + math.floor(ly.mainBtnH / 2),
-        width = w, height = 1,
-        text = centerText("UNLOAD", w),
-        align = "center",
-        bg = C.btnBlue,
-        fg = C.fgWhite,
-    })
-    root:addChild(mainUnloadLabel)
-
     ---------------------------------------------------------------------------
-    -- List screen widgets  (w=15)
+    -- List screen
     ---------------------------------------------------------------------------
 
     listTitle = app:createLabel({
@@ -278,7 +248,6 @@ function M.createUI(monitor, stateModule)
     })
     root:addChild(listTitle)
 
-    -- Item rows
     itemRows = {}
     for i = 1, ly.nItems do
         local row = app:createLabel({
@@ -293,13 +262,14 @@ function M.createUI(monitor, stateModule)
         itemRows[i] = row
     end
 
-    -- Nav buttons: side by side
-    local navBtnW = 6
-    local navX = 1
+    -- Up/down buttons: width=5, equal margins
+    -- Total width = 5 + 1(gap) + 5 = 11. Margin each side = (15-11)/2 = 2
+    local navBtnW = 5
+    local navX = math.floor((w - navBtnW * 2 - 1) / 2)
     upBtn = app:createButton({
         x = navX, y = ly.navY,
         width = navBtnW, height = 1,
-        label = truncate(" \30 " .. " UP", navBtnW),
+        label = " \30 ",
         bg = C.btnGray, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -324,7 +294,7 @@ function M.createUI(monitor, stateModule)
     downBtn = app:createButton({
         x = navX + navBtnW + 1, y = ly.navY,
         width = navBtnW, height = 1,
-        label = truncate(" \31 " .. " DN", navBtnW),
+        label = " \31 ",
         bg = C.btnGray, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -346,11 +316,11 @@ function M.createUI(monitor, stateModule)
     })
     root:addChild(downBtn)
 
-    -- SELECT at bottom (h-3), ABORT at bottom (h-2) — same fixed rows across all screens
+    -- SELECT/ABORT at fixed bottom rows
     selectBtn = app:createButton({
         x = 1, y = ly.actionSelectY,
         width = w, height = 1,
-        label = centerText("SELECT", w),
+        label = leftOfCenter("SELECT", w),
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -369,7 +339,7 @@ function M.createUI(monitor, stateModule)
     listAbortBtn = app:createButton({
         x = 1, y = ly.actionAbortY,
         width = w, height = 1,
-        label = centerText("ABORT", w),
+        label = leftOfCenter("ABORT", w),
         bg = C.btnRed, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -383,14 +353,17 @@ function M.createUI(monitor, stateModule)
     root:addChild(listAbortBtn)
 
     ---------------------------------------------------------------------------
-    -- Confirm screen widgets  (w=15)
-    -- Line 1: "Source: name"
-    -- Line 2: "(x,y)"
-    -- Line 3: "Destination: name"
-    -- Line 4: "(x,y)"
-    -- Line 5: mode (LOAD/UNLOAD)
-    -- Line 6: spacer or extra info
-    -- RUN at h-3, ABORT at h-2
+    -- Confirm screen
+    -- Layout:
+    --   Source:        (yellow)
+    --   Depot          (white, point name)
+    --   (80, 30)       (white, coords)
+    --   (empty)
+    --   Destination:   (yellow)
+    --   Train st...    (white, point name)
+    --   (10, 40)       (white, coords)
+    --   (empty)
+    --   LOAD           (cyan, centered)
     ---------------------------------------------------------------------------
 
     confirmLine1 = app:createLabel({
@@ -416,16 +389,16 @@ function M.createUI(monitor, stateModule)
         width = w, height = 1,
         text = "",
         align = "left",
-        bg = C.bg, fg = C.fgYellow,
+        bg = C.bg, fg = C.fgWhite,
     })
     root:addChild(confirmLine3)
 
     confirmLine4 = app:createLabel({
-        x = 1, y = ly.contentStart + 3,
+        x = 1, y = ly.contentStart + 4,
         width = w, height = 1,
         text = "",
         align = "left",
-        bg = C.bg, fg = C.fgWhite,
+        bg = C.bg, fg = C.fgYellow,
     })
     root:addChild(confirmLine4)
 
@@ -433,8 +406,8 @@ function M.createUI(monitor, stateModule)
         x = 1, y = ly.contentStart + 5,
         width = w, height = 1,
         text = "",
-        align = "center",
-        bg = C.bg, fg = C.fgCyan,
+        align = "left",
+        bg = C.bg, fg = C.fgWhite,
     })
     root:addChild(confirmLine5)
 
@@ -442,15 +415,24 @@ function M.createUI(monitor, stateModule)
         x = 1, y = ly.contentStart + 6,
         width = w, height = 1,
         text = "",
-        align = "center",
-        bg = C.bg, fg = C.fgLight,
+        align = "left",
+        bg = C.bg, fg = C.fgWhite,
     })
     root:addChild(confirmLine6)
+
+    confirmLine7 = app:createLabel({
+        x = 1, y = ly.contentStart + 8,
+        width = w, height = 1,
+        text = "",
+        align = "center",
+        bg = C.bg, fg = C.fgCyan,
+    })
+    root:addChild(confirmLine7)
 
     confirmRunBtn = app:createButton({
         x = 1, y = ly.actionSelectY,
         width = w, height = 1,
-        label = centerText("RUN", w),
+        label = leftOfCenter("RUN", w),
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -466,7 +448,7 @@ function M.createUI(monitor, stateModule)
     confirmAbortBtn = app:createButton({
         x = 1, y = ly.actionAbortY,
         width = w, height = 1,
-        label = centerText("ABORT", w),
+        label = leftOfCenter("ABORT", w),
         bg = C.btnRed, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -479,8 +461,7 @@ function M.createUI(monitor, stateModule)
     root:addChild(confirmAbortBtn)
 
     ---------------------------------------------------------------------------
-    -- Executing screen widgets  (w=15)
-    -- STOP button at h-3
+    -- Executing screen
     ---------------------------------------------------------------------------
 
     execTitle = app:createLabel({
@@ -504,7 +485,7 @@ function M.createUI(monitor, stateModule)
     execAbortBtn = app:createButton({
         x = 1, y = ly.actionSelectY,
         width = w, height = 1,
-        label = centerText("STOP", w),
+        label = leftOfCenter("STOP", w),
         bg = C.btnRed, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -520,7 +501,7 @@ function M.createUI(monitor, stateModule)
     root:addChild(execAbortBtn)
 
     ---------------------------------------------------------------------------
-    -- Success screen widgets  (w=15)
+    -- Success / Error / Connection lost
     ---------------------------------------------------------------------------
 
     successLine1 = app:createLabel({
@@ -541,10 +522,6 @@ function M.createUI(monitor, stateModule)
     })
     root:addChild(successLine2)
 
-    ---------------------------------------------------------------------------
-    -- Error screen widgets  (w=15)
-    ---------------------------------------------------------------------------
-
     errorLine1 = app:createLabel({
         x = 1, y = ly.contentStart + 2,
         width = w, height = 1,
@@ -562,10 +539,6 @@ function M.createUI(monitor, stateModule)
         bg = C.bg, fg = C.fgLight,
     })
     root:addChild(errorLine2)
-
-    ---------------------------------------------------------------------------
-    -- Connection lost screen widgets  (w=15)
-    ---------------------------------------------------------------------------
 
     connLostLine1 = app:createLabel({
         x = 1, y = ly.contentStart + 2,
@@ -594,9 +567,7 @@ end
 
 local function hideAllDynamic()
     if mainLoadBtn then mainLoadBtn.visible = false end
-    if mainLoadLabel then mainLoadLabel.visible = false end
     if mainUnloadBtn then mainUnloadBtn.visible = false end
-    if mainUnloadLabel then mainUnloadLabel.visible = false end
     if listTitle then listTitle.visible = false end
     for _, r in ipairs(itemRows) do r.visible = false end
     if upBtn then upBtn.visible = false end
@@ -609,6 +580,7 @@ local function hideAllDynamic()
     if confirmLine4 then confirmLine4.visible = false end
     if confirmLine5 then confirmLine5.visible = false end
     if confirmLine6 then confirmLine6.visible = false end
+    if confirmLine7 then confirmLine7.visible = false end
     if confirmRunBtn then confirmRunBtn.visible = false end
     if confirmAbortBtn then confirmAbortBtn.visible = false end
     if execTitle then execTitle.visible = false end
@@ -628,12 +600,9 @@ local function updateMainButtons(state)
     local bg = connected and C.btnBlue or C.btnGray
     local fg = connected and C.fgWhite or C.fgGray
     if mainLoadBtn then mainLoadBtn.bg = bg; mainLoadBtn.fg = fg end
-    if mainLoadLabel then mainLoadLabel.bg = bg; mainLoadLabel.fg = fg end
     if mainUnloadBtn then mainUnloadBtn.bg = bg; mainUnloadBtn.fg = fg end
-    if mainUnloadLabel then mainUnloadLabel.bg = bg; mainUnloadLabel.fg = fg end
 end
 
---- Build compact list labels (name only, no coords on 15-char screen).
 local function buildItemLabels(points)
     local labels = {}
     for i, p in ipairs(points) do
@@ -651,10 +620,8 @@ function M.updateScreen(state)
     if not app then return end
     hideAllDynamic()
 
-    -- Header always visible
     if headerLabel then headerLabel.visible = true end
 
-    -- Status footer
     if statusLabel then
         local connected = state.connected and state.registered
         if connected then
@@ -671,13 +638,9 @@ function M.updateScreen(state)
 
     if state.screen == "main" then
         if mainLoadBtn then mainLoadBtn.visible = true end
-        if mainLoadLabel then mainLoadLabel.visible = true end
         if mainUnloadBtn then mainUnloadBtn.visible = true end
-        if mainUnloadLabel then mainUnloadLabel.visible = true end
 
     elseif state.screen == "select_source" or state.screen == "select_dest" then
-        if headerLabel then headerLabel.visible = true end
-
         local isSource = (state.screen == "select_source")
         local items = isSource and state.sourcePoints or state.destPoints
         local selIdx = isSource and state.sourceIndex or state.destIndex
@@ -718,18 +681,14 @@ function M.updateScreen(state)
             end
         end
 
-        -- Navigation buttons visible when there are multiple items to choose from.
         local showScroll = nItems > 1
         if upBtn then upBtn.visible = showScroll end
         if downBtn then downBtn.visible = showScroll end
 
-        -- SELECT/ABORT always at the bottom (fixed rows h-3 / h-2)
         if selectBtn then selectBtn.visible = true end
         if listAbortBtn then listAbortBtn.visible = true end
 
     elseif state.screen == "confirm" then
-        if headerLabel then headerLabel.visible = true end
-
         local src = state.selectedSource or { name = "?", x = 0, y = 0 }
         local dst = state.selectedDest or { name = "?", x = 0, y = 0 }
         local mode = (state.mode or "load"):upper()
@@ -739,34 +698,33 @@ function M.updateScreen(state)
             confirmLine1.visible = true
         end
         if confirmLine2 then
-            local coordStr = "(" .. src.x .. "," .. src.y .. ")"
-            local maxName = math.max(1, w - #coordStr)
-            confirmLine2:setText(truncate(src.name, maxName) .. coordStr)
+            confirmLine2:setText(truncate(src.name, w))
             confirmLine2.visible = true
         end
         if confirmLine3 then
-            confirmLine3:setText("Destination:")
+            confirmLine3:setText("(" .. src.x .. "," .. src.y .. ")")
             confirmLine3.visible = true
         end
         if confirmLine4 then
-            local coordStr = "(" .. dst.x .. "," .. dst.y .. ")"
-            local maxName = math.max(1, w - #coordStr)
-            confirmLine4:setText(truncate(dst.name, maxName) .. coordStr)
+            confirmLine4:setText("Destination:")
             confirmLine4.visible = true
         end
         if confirmLine5 then
-            confirmLine5:setText(centerText(mode, w))
+            confirmLine5:setText(truncate(dst.name, w))
             confirmLine5.visible = true
         end
         if confirmLine6 then
-            confirmLine6.visible = false
+            confirmLine6:setText("(" .. dst.x .. "," .. dst.y .. ")")
+            confirmLine6.visible = true
+        end
+        if confirmLine7 then
+            confirmLine7:setText(centerText(mode, w))
+            confirmLine7.visible = true
         end
         if confirmRunBtn then confirmRunBtn.visible = true end
         if confirmAbortBtn then confirmAbortBtn.visible = true end
 
     elseif state.screen == "executing" then
-        if headerLabel then headerLabel.visible = true end
-
         local mode = (state.mode or "load"):upper()
         if execTitle then
             execTitle:setText(centerText(mode, w))
@@ -776,11 +734,9 @@ function M.updateScreen(state)
             execStatusLabel:setText(truncate(state.operationStatus or "", w))
             execStatusLabel.visible = true
         end
-        -- STOP button at the bottom (h-3)
         if execAbortBtn then execAbortBtn.visible = true end
 
     elseif state.screen == "success" then
-        if headerLabel then headerLabel.visible = true end
         if successLine1 then
             successLine1:setText(centerText("Done!", w))
             successLine1.visible = true
@@ -791,7 +747,6 @@ function M.updateScreen(state)
         end
 
     elseif state.screen == "error" then
-        if headerLabel then headerLabel.visible = true end
         if errorLine1 then
             errorLine1:setText(truncate("ERR:" .. (state.operationError or "?"), w))
             errorLine1.visible = true
@@ -802,7 +757,6 @@ function M.updateScreen(state)
         end
 
     elseif state.screen == "connection_lost" then
-        if headerLabel then headerLabel.visible = true end
         if connLostLine1 then
             connLostLine1:setText(centerText("CONN LOST", w))
             connLostLine1.visible = true
@@ -817,7 +771,7 @@ function M.updateScreen(state)
 end
 
 -------------------------------------------------------------------------------
--- Live status update during execution (no full screen transition)
+-- Live status update
 -------------------------------------------------------------------------------
 
 function M.updateProgress(state)

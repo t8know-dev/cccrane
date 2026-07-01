@@ -257,7 +257,7 @@ function PanelUI:_buildSourcePanel()
 
     -- [+] clickable label
     self._srcSaveBtn = a:createButton({
-        x = 21, y = L.INPUTS + 1,
+        x = 19, y = L.INPUTS + 1,
         width = 3, height = 1,
         label = "[+]",
         bg = C.bgPanel, fg = C.fgYellow,
@@ -343,7 +343,7 @@ function PanelUI:_buildDestPanel()
 
     -- [+] clickable label
     self._dstSaveBtn = a:createButton({
-        x = panX + 21, y = L.INPUTS + 1,
+        x = panX + 19, y = L.INPUTS + 1,
         width = 3, height = 1,
         label = "[+]",
         bg = C.bgPanel, fg = C.fgYellow,
