@@ -765,11 +765,6 @@ function M.updateScreen(state)
             successLine1:setText(centerText(state.operationStatus or "Done!", w))
             successLine1.visible = true
         end
-        if successLine2 then
-            successLine2:setText(centerText("Returning to main...", w))
-            successLine2.visible = true
-        end
-
     elseif state.screen == "error" then
         if errorLine1 then
             errorLine1:setText(truncate("ERR:" .. (state.operationError or "?"), w))
