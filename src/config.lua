@@ -33,12 +33,12 @@ return {
     MOVE_SETTLE_DELAY = 0.2,
 
     -- Peripheral names (as seen by peripheral.wrap)
-    GEAR_PERIPHERAL = "right",
-    RELAY_PERIPHERAL = "left",
+    GEAR_PERIPHERAL = "Create_SequencedGearShift_13",
+    RELAY_PERIPHERAL = "redstone_relay_61",
 
     -- Redstone relay output sides (on the relay block)
-    AXIS_SIDE = "front",
-    LIFT_SIDE = "top",
+    AXIS_SIDE = "top",
+    LIFT_SIDE = "left",
     STICKER_SIDE = "bottom",
 
     -- Axis polarity: set INVERSE_X or INVERSE_Y to true if the respective
@@ -47,7 +47,7 @@ return {
     INVERSE_Y = false,
 
     -- Monitor peripheral name (for crane-load-unload.lua)
-    MONITOR_PERIPHERAL = "monitor_15",
+    MONITOR_PERIPHERAL = "monitor_1132",
 
     -- Point file paths (for crane-load-unload.lua)
     PICKUP_POINTS_FILE = "cccrane/data/pickup_points.lua",
