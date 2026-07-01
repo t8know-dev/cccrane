@@ -54,6 +54,7 @@ local panelState = {
     -- Operation execution phase tracking
     executing        = false,     -- true between RUN click and ACK
     execPhase        = 0,         -- 0=starting, 1=moving_to_src, 2=picking_up, 3=moving_to_dst, 4=dropping
+    explicitPhaseReceived = false, -- true once we received a STATUS with explicit phase (PICKANDDROP)
 
     -- Disconnect watchdog
     lastMessageTime  = nil,       -- os.epoch("utc") of last received message
@@ -279,6 +280,7 @@ local function handleMessage(msg)
     elseif body.message_type == "ACK" then
         panelState.pending = false
         panelState.executing = false
+        panelState.explicitPhaseReceived = false
 
         local ackStatus = body.status or "?"
         local ackMsg = body.message or ""
@@ -327,15 +329,18 @@ local function handleMessage(msg)
         if panelState.executing then
             local phase
             if newPhase ~= nil then
-                -- Use explicit phase from client (PICKANDROP sub-steps)
+                -- Use explicit phase from client (PICKANDDROP sub-steps)
                 phase = newPhase
-            else
-                -- Fall back to inference for other commands
+                panelState.explicitPhaseReceived = true
+            elseif not panelState.explicitPhaseReceived then
+                -- Fall back to inference for other commands (only if we never
+                -- received an explicit phase — avoids msgRouter's blunt STATUS
+                -- from overwriting the correct explicit phase)
                 local src = st.getState("selectedSource") or { x = 0, y = 0 }
                 local dst = st.getState("selectedDest") or { x = 0, y = 0 }
                 phase = inferExecPhase(newPos, newSticker, src, dst)
             end
-            if phase ~= panelState.execPhase then
+            if phase ~= nil and phase ~= panelState.execPhase then
                 panelState.execPhase = phase
                 local label = EXEC_LABELS[phase] or "Executing..."
                 st.updateState({ operationStatus = label })
@@ -476,6 +481,7 @@ st.subscribe(function(changes)
     if changes.screen == "executing" and not panelState.executing then
         panelState.executing = true
         panelState.execPhase = 0
+        panelState.explicitPhaseReceived = false  -- reset for new operation
 
         local src = st.getState("selectedSource")
         local dst = st.getState("selectedDest")

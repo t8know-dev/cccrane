@@ -32,6 +32,7 @@ local proto = id:Protocol {
 
 local conn = nil          -- active ECNet2 connection
 local busy = false         -- true while executing a command
+local currentPhase = nil   -- execution phase for PICKANDDROP (1-5, nil when idle/other)
 local heartbeatTimer = nil -- timer ID for periodic status
 local lastMessageTime = os.epoch("utc")  -- time of last received message (watchdog)
 
@@ -52,38 +53,27 @@ local function sendMessage(msg)
     end
     return ok
 end
-
+---
 --- Send a STATUS event to the panel.
-local function sendStatus()
+--- Includes currentPhase when a PICKANDDROP operation is active,
+--- so msgRouter periodic STATUS also carries the right phase.
+--- @param explicitPhase number|nil optional override for the phase field
+local function sendStatus(explicitPhase)
     local st = crane.getState()
+    local phase = explicitPhase or currentPhase
+    local status = {
+        position = { st.currentX, st.currentY },
+        sticker = st.stickerOn,
+        busy = busy,
+    }
+    if phase ~= nil then
+        status.phase = phase
+    end
     sendMessage({
         type = "event",
         body = {
             message_type = "STATUS",
-            status = {
-                position = { st.currentX, st.currentY },
-                sticker = st.stickerOn,
-                busy = busy,
-            },
-        },
-    })
-end
-
---- Send a STATUS event with an explicit operation phase number.
---- Used by PICKANDDROP to report sub-step progress to the panel.
---- @param phase number 1=moving_to_src, 2=picking_up, 3=moving_to_dst, 4=dropping, 5=returning
-local function sendStatusWithPhase(phase)
-    local st = crane.getState()
-    sendMessage({
-        type = "event",
-        body = {
-            message_type = "STATUS",
-            status = {
-                position = { st.currentX, st.currentY },
-                sticker = st.stickerOn,
-                busy = busy,
-                phase = phase,
-            },
+            status = status,
         },
     })
 end
@@ -136,6 +126,12 @@ local function executeCommand(command, params, seq)
     busy = true
     crane.clearStop()
     crane.markRunning()
+
+    -- Set currentPhase before the initial sendStatus so even the very first
+    -- STATUS (and any msgRouter STATUS) carries the correct phase.
+    if command == "PICKANDDROP" then
+        currentPhase = 1
+    end
     sendStatus()
 
     local aborted = false
@@ -149,13 +145,13 @@ local function executeCommand(command, params, seq)
         elseif command == "HOME" then
             crane.home()
         elseif command == "PICKANDDROP" then
-            -- Phase 1: Moving to pickup point
-            sendStatusWithPhase(1)
+            -- Phase 1: Moving to pickup point (currentPhase already = 1)
             crane.gotoXY(params.src.x, params.src.y)
             if crane.isStopped() then aborted = true; return end
 
             -- Phase 2: Picking up (lower, sticker grab, raise to transport height)
-            sendStatusWithPhase(2)
+            currentPhase = 2
+            sendStatus()
             crane.lower()
             if crane.isStopped() then aborted = true; return end
             crane.stickerGrab()
@@ -164,19 +160,22 @@ local function executeCommand(command, params, seq)
             if crane.isStopped() then aborted = true; return end
 
             -- Phase 3: Moving to drop point
-            sendStatusWithPhase(3)
+            currentPhase = 3
+            sendStatus()
             crane.gotoXY(params.dst.x, params.dst.y)
             if crane.isStopped() then aborted = true; return end
 
             -- Phase 4: Dropping (lower to ground)
-            sendStatusWithPhase(4)
+            currentPhase = 4
+            sendStatus()
             crane.lowerTo(crane.config.LIFT_HEIGHT)
             if crane.isStopped() then aborted = true; return end
 
             -- Phase 5: Returning (sticker release, raise)
             crane.stickerRelease()
             if crane.isStopped() then aborted = true; return end
-            sendStatusWithPhase(5)
+            currentPhase = 5
+            sendStatus()
             crane.raise()
         elseif command == "STATUS_QUERY" then
             -- nothing to do, status sent below
@@ -186,6 +185,7 @@ local function executeCommand(command, params, seq)
     end)
 
     busy = false
+    currentPhase = nil
 
     if aborted then
         sendMessage({
