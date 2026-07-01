@@ -1,1 +1,0 @@
-local a=require"cc.expect".expect;local function b(self)return self.__name.."<>"end;local function c(self)return"Class<"..self.__name..">"end;local d={__tostring=c,__name="class",__call=function(self,...)local e=setmetatable({},self.__index)e:initialise(...)return e end}return function(f)a(1,f,"string")local g=setmetatable({__name=f,__tostring=b},d)g.__index=g;return g end
