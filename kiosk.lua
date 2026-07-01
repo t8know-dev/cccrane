@@ -130,6 +130,7 @@ st.updateState({
     destPoints = destPoints,
     selectedSource = sourcePoints[1],
     selectedDest = destPoints[1],
+    version = cfg.VERSION or "?",
 })
 
 ------------------------------------------------------------

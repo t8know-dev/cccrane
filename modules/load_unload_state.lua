@@ -10,6 +10,9 @@ local state = {
     -- Current screen in the wizard flow
     screen          = "main",  -- main | select_source | select_dest | confirm | executing | success | error | connection_lost
 
+    -- Application version (set from config.lua by kiosk.lua)
+    version         = "",
+
     -- Operation mode: "load" (pickup → drop) or "unload" (same, just labeled)
     mode            = nil,
 

@@ -30,7 +30,7 @@ local upBtn, downBtn
 local selectBtn, listAbortBtn
 
 -- Confirm screen
-local confirmLine1, confirmLine2, confirmLine3, confirmLine4, confirmLine5, confirmLine6, confirmLine7
+local confirmLine1, confirmLine2, confirmLine3, confirmLine4, confirmLine5, confirmLine6, confirmLine7, confirmLine8
 local confirmRunBtn, confirmAbortBtn
 
 -- Executing screen
@@ -38,7 +38,7 @@ local execTitle
 local execStatusLines = {}       -- multiple lines for wrapped status text
 
 -- Success screen
-local successLine1, successLine2
+local successLine1, successLine2, successSep, successSourceLine, successDestLine
 
 -- Error screen
 local errorLine1, errorLine2
@@ -207,7 +207,7 @@ function M.createUI(monitor, stateModule)
 
     copyrightLabel = app:createLabel({
         x = 1, y = ly.statusY,
-        width = w - 1, height = 1,
+        width = w, height = 1,
         text = "",
         align = "right",
         bg = C.bg,
@@ -476,7 +476,7 @@ function M.createUI(monitor, stateModule)
         x = 1, y = ly.contentStart + 9,
         width = w, height = 1,
         text = "",
-        align = "center",
+        align = "left",
         bg = C.bg, fg = C.fgCyan,
     })
     root:addChild(confirmLine8)
@@ -563,6 +563,33 @@ function M.createUI(monitor, stateModule)
     })
     root:addChild(successLine2)
 
+    successSep = app:createLabel({
+        x = 1, y = ly.contentStart + 6,
+        width = w, height = 1,
+        text = "",
+        align = "center",
+        bg = C.bg, fg = C.sep,
+    })
+    root:addChild(successSep)
+
+    successSourceLine = app:createLabel({
+        x = 1, y = ly.contentStart + 7,
+        width = w, height = 1,
+        text = "",
+        align = "left",
+        bg = C.bg, fg = C.fgYellow,
+    })
+    root:addChild(successSourceLine)
+
+    successDestLine = app:createLabel({
+        x = 1, y = ly.contentStart + 8,
+        width = w, height = 1,
+        text = "",
+        align = "left",
+        bg = C.bg, fg = C.fgCyan,
+    })
+    root:addChild(successDestLine)
+
     errorLine1 = app:createLabel({
         x = 1, y = ly.contentStart + 2,
         width = w, height = 1,
@@ -629,6 +656,9 @@ local function hideAllDynamic()
     for _, l in ipairs(execStatusLines) do l.visible = false end
     if successLine1 then successLine1.visible = false end
     if successLine2 then successLine2.visible = false end
+    if successSep then successSep.visible = false end
+    if successSourceLine then successSourceLine.visible = false end
+    if successDestLine then successDestLine.visible = false end
     if errorLine1 then errorLine1.visible = false end
     if errorLine2 then errorLine2.visible = false end
     if connLostLine1 then connLostLine1.visible = false end
@@ -667,7 +697,7 @@ function M.updateScreen(state)
     end
 
     if copyrightLabel then
-        copyrightLabel:setText("(c) jigga")
+        copyrightLabel:setText("(c) jigga " .. (state.version or ""))
         copyrightLabel.visible = true
     end
 
@@ -788,6 +818,20 @@ function M.updateScreen(state)
         if successLine1 then
             successLine1:setText(centerText(state.operationStatus or "Done!", w))
             successLine1.visible = true
+        end
+        if successSep then
+            successSep:setText(string.rep("-", w))
+            successSep.visible = true
+        end
+        local src = state.selectedSource or { name = "?", x = 0, y = 0 }
+        local dst = state.selectedDest or { name = "?", x = 0, y = 0 }
+        if successSourceLine then
+            successSourceLine:setText("> " .. truncate(src.name, w - 2))
+            successSourceLine.visible = true
+        end
+        if successDestLine then
+            successDestLine:setText("> " .. truncate(dst.name, w - 2))
+            successDestLine.visible = true
         end
     elseif state.screen == "error" then
         if errorLine1 then
