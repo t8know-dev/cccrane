@@ -5063,7 +5063,8 @@ function Button:draw(textLayer, pixelLayer)
 	end
 
 	local label = self.label or ""
-	local availableWidth = (innerWidth > 0 and innerHeight > 0) and innerWidth or width
+	local useInner = innerWidth > 0 and innerHeight > 0
+	local availableWidth = useInner and innerWidth or width
 	if #label > availableWidth then
 		label = label:sub(1, availableWidth)
 	end
@@ -5075,7 +5076,7 @@ function Button:draw(textLayer, pixelLayer)
 	if #labelLine < availableWidth then
 		labelLine = labelLine .. string.rep(" ", availableWidth - #labelLine)
 	end
-	local labelX = innerWidth > 0 and innerX or ax
+	local labelX = useInner and innerX or ax
 	local labelY
 	if innerHeight > 0 then
 		labelY = innerY + math.floor((innerHeight - 1) / 2)

@@ -795,8 +795,31 @@ function PanelUI:_savePoint(pointType, name, x, y)
         end
     end
 
-    -- Add / update point
-    points[name] = { x = x, y = y }
+    -- Normalize to array-of-tables format (file was previously saved in keyed-object format)
+    local firstKey = next(points)
+    if firstKey ~= nil and type(firstKey) == "string" then
+        -- Keyed-object: { ["Name"] = { x=1, y=2 } } → { { name="Name", x=1, y=2 } }
+        local array = {}
+        for k, v in pairs(points) do
+            if type(v) == "table" and v.x and v.y then
+                table.insert(array, { name = k, x = v.x, y = v.y })
+            end
+        end
+        points = array
+    end
+
+    -- Find existing entry by name and update, or append new
+    local found = false
+    for _, p in ipairs(points) do
+        if p.name == name then
+            p.x, p.y = x, y
+            found = true
+            break
+        end
+    end
+    if not found then
+        table.insert(points, { name = name, x = x, y = y })
+    end
 
     -- Atomic write (temp file + rename)
     local tmpPath = filePath .. ".tmp"
