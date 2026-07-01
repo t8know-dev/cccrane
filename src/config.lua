@@ -7,7 +7,7 @@ touching the logic.
 
 return {
     -- Application version
-    VERSION = "v0.3",
+    VERSION = "v0.4",
 
     -- Grid dimensions (in blocks). The crane can move within [0, MAX_X] × [0, MAX_Y].
     MAX_X = 97,

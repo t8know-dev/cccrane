@@ -152,6 +152,27 @@ function M.init(pixeluiRef)
     pixelui = pixeluiRef
 end
 
+--- Get list info based on screen and operation mode.
+--- For LOAD mode: first screen (select_source) = destPoints, second (select_dest) = sourcePoints.
+--- For UNLOAD mode: first screen (select_source) = sourcePoints, second (select_dest) = destPoints.
+--- Returns: items, currentIndex, indexKey, selectedKey
+local function getListInfo(state)
+    local isSource = (state.screen == "select_source")
+    if state.mode == "load" then
+        if isSource then
+            return state.destPoints, state.destIndex, "destIndex", "selectedDest"
+        else
+            return state.sourcePoints, state.sourceIndex, "sourceIndex", "selectedSource"
+        end
+    else
+        if isSource then
+            return state.sourcePoints, state.sourceIndex, "sourceIndex", "selectedSource"
+        else
+            return state.destPoints, state.destIndex, "destIndex", "selectedDest"
+        end
+    end
+end
+
 -------------------------------------------------------------------------------
 -- UI Creation
 -------------------------------------------------------------------------------
@@ -659,28 +680,6 @@ local function hideAllDynamic()
     if errorLine2 then errorLine2.visible = false end
     if connLostLine1 then connLostLine1.visible = false end
     if connLostLine2 then connLostLine2.visible = false end
-end
-
---- Get list info based on screen and operation mode.
---- For UNLOAD mode, lists are swapped (select_source → destPoints, select_dest → sourcePoints).
---- Returns: items, currentIndex, indexKey, selectedKey
-local function getListInfo(state)
-    local isSource = (state.screen == "select_source")
-    if state.mode == "load" then
-        -- LOAD: first screen (select_source) = destPoints, second (select_dest) = sourcePoints
-        if isSource then
-            return state.destPoints, state.destIndex, "destIndex", "selectedDest"
-        else
-            return state.sourcePoints, state.sourceIndex, "sourceIndex", "selectedSource"
-        end
-    else
-        -- UNLOAD: first screen (select_source) = sourcePoints, second (select_dest) = destPoints
-        if isSource then
-            return state.sourcePoints, state.sourceIndex, "sourceIndex", "selectedSource"
-        else
-            return state.destPoints, state.destIndex, "destIndex", "selectedDest"
-        end
-    end
 end
 
 local function buildItemLabels(points)
