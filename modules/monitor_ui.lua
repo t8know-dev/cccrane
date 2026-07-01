@@ -86,10 +86,10 @@ local function centerText(text, width)
     return string.rep(" ", pad) .. text .. string.rep(" ", rightPad)
 end
 
--- Center text then shift 1 char left (for RUN/ABORT buttons)
-local function leftOfCenter(text, width)
+-- Center text then shift 1 char right (for RUN/SELECT/ABORT buttons)
+local function rightOfCenter(text, width)
     width = width or w
-    local pad = math.max(0, math.floor((width - #text) / 2) - 1)
+    local pad = math.max(0, math.floor((width - #text) / 2) + 1)
     local rightPad = math.max(0, width - #text - pad)
     return string.rep(" ", pad) .. text .. string.rep(" ", rightPad)
 end
@@ -192,6 +192,7 @@ function M.createUI(monitor, stateModule)
     mainLoadBtn = app:createButton({
         x = btnX, y = ly.mainBtnY1,
         width = btnW, height = 3,
+        border = 1,
         label = "LOAD",
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
@@ -215,6 +216,7 @@ function M.createUI(monitor, stateModule)
     mainUnloadBtn = app:createButton({
         x = btnX, y = ly.mainBtnY2,
         width = btnW, height = 3,
+        border = 1,
         label = "UNLOAD",
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
@@ -277,7 +279,7 @@ function M.createUI(monitor, stateModule)
     -- Total width = 3 + 5(gap) + 3 = 11. Margin each side = (15-11)/2 = 2
     local navBtnW = 3
     local navGap = 5
-    local navX = math.floor((w - navBtnW * 2 - navGap) / 2)
+    local navX = math.floor((w - navBtnW * 2 - navGap) / 2) + 1
     upBtn = app:createButton({
         x = navX, y = ly.navY,
         width = navBtnW, height = 1,
@@ -332,7 +334,7 @@ function M.createUI(monitor, stateModule)
     selectBtn = app:createButton({
         x = 2, y = ly.actionSelectY,
         width = 13, height = 1,
-        label = leftOfCenter("SELECT", 13),
+        label = rightOfCenter("SELECT", 13),
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -351,7 +353,7 @@ function M.createUI(monitor, stateModule)
     listAbortBtn = app:createButton({
         x = 2, y = ly.actionAbortY,
         width = 13, height = 1,
-        label = leftOfCenter("ABORT", 13),
+        label = rightOfCenter("ABORT", 13),
         bg = C.btnRed, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -444,7 +446,7 @@ function M.createUI(monitor, stateModule)
     confirmRunBtn = app:createButton({
         x = 2, y = ly.actionSelectY,
         width = 13, height = 1,
-        label = leftOfCenter("RUN", 13),
+        label = rightOfCenter("RUN", 13),
         bg = C.btnBlue, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -460,7 +462,7 @@ function M.createUI(monitor, stateModule)
     confirmAbortBtn = app:createButton({
         x = 2, y = ly.actionAbortY,
         width = 13, height = 1,
-        label = leftOfCenter("ABORT", 13),
+        label = rightOfCenter("ABORT", 13),
         bg = C.btnRed, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
@@ -497,7 +499,7 @@ function M.createUI(monitor, stateModule)
     execAbortBtn = app:createButton({
         x = 2, y = ly.actionSelectY,
         width = 13, height = 1,
-        label = leftOfCenter("ABORT", 13),
+        label = rightOfCenter("ABORT", 13),
         bg = C.btnRed, fg = C.fgWhite,
         onClick = function()
             local now = os.clock()
