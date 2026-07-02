@@ -37,7 +37,7 @@ return {
     -- Timing delays (seconds). Tune these if the crane behaves erratically.
     RELAY_DELAY = 0.1,
     STICKER_TOGGLE_DELAY = 0.1,
-    AXIS_SWITCH_DELAY = 0.1,
+    AXIS_SWITCH_DELAY = 0.2,
     MOVE_SETTLE_DELAY = 0.2,
 
     -- Peripheral names (as seen by peripheral.wrap)
