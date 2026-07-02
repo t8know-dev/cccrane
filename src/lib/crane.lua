@@ -405,6 +405,7 @@ function craneInit()
         -- No state, corrupted state, or interrupted mid-operation -- full homing.
         if loaded and state.craneRunning then
             print("Previous operation was interrupted, homing...")
+            sleep(3)
         else
             print("No saved state found, homing...")
         end
