@@ -1,4 +1,4 @@
--- crane-panel.lua — v18 Crane control panel (ECNet2 server)
+-- crane-panel.lua — Crane control panel (ECNet2 server)
 --
 -- Full-screen terminal GUI for remotely controlling a crane via ECNet2.
 -- Displays source/destination position fields, command buttons, crane status,
@@ -7,7 +7,7 @@
 -- Usage: crane-panel
 --
 -- The panel's ECNet2 address is printed on startup — copy it to
--- crane-remote-config.lua on the crane computer.
+-- src/remote_config.lua on the crane computer.
 
 local ecnet2 = require "ecnet2"
 local random = require "ccryptolib.random"
@@ -50,8 +50,8 @@ local panelState = {
     registered         = false,  -- true once REGISTER received (handshake fully done)
 }
 
-local CONNECTION_TIMEOUT = 15  -- seconds without message = disconnected
-local KEEPALIVE_INTERVAL = 7   -- seconds between keepalive pings
+local CONNECTION_TIMEOUT = cfg.CONNECTION_TIMEOUT  -- from config.lua (single source of truth)
+local KEEPALIVE_INTERVAL = cfg.KEEPALIVE_INTERVAL
 
 ------------------------------------------------------------
 -- ECNet2 SETUP

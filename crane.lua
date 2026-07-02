@@ -1,4 +1,4 @@
--- crane.lua v1.5.6 — CC: Create crane controller
+-- crane.lua — CC: Create crane controller
 -- Thin CLI wrapper around src/lib/crane.lua.
 --
 -- Usage: crane <srcX> <srcY> <dstX> <dstY>

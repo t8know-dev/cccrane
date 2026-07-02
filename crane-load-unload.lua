@@ -68,8 +68,8 @@ local panelState = {
     pendingConfigQuery = false,   -- true if CONFIG_QUERY needs to be sent after handshake
 }
 
-local CONNECTION_TIMEOUT = 15     -- seconds without message = disconnected
-local KEEPALIVE_INTERVAL = 7      -- seconds between keepalive pings
+local CONNECTION_TIMEOUT = cfg.CONNECTION_TIMEOUT  -- from config.lua (single source of truth)
+local KEEPALIVE_INTERVAL = cfg.KEEPALIVE_INTERVAL
 
 ------------------------------------------------------------
 -- ECNet2 SETUP

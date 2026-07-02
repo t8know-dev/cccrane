@@ -5,9 +5,16 @@ file so you can adjust dimensions, timing, peripheral names, and polarity withou
 touching the logic.
 --]]
 
+--[[
+config.lua — Crane configuration file
+All tunable parameters are defined here. The main script (crane.lua) reads from this
+file so you can adjust dimensions, timing, peripheral names, and polarity without
+touching the logic.
+--]]
+
 return {
-    -- Application version
-    VERSION = "v0.6",
+    -- Application version (single source of truth)
+    VERSION = "v0.5",
 
     -- Grid dimensions (in blocks). The crane can move within [0, MAX_X] × [0, MAX_Y].
     MAX_X = 97,
@@ -19,6 +26,7 @@ return {
     -- Transport offset: during transit the load is raised to
     -- (LIFT_HEIGHT - TRANSPORT_LOWER) instead of all the way up.
     -- A higher value = lower transport position (more clearance from top stops).
+    -- Must be <= LIFT_HEIGHT (validated at startup).
     TRANSPORT_LOWER = 10,
 
     -- Home offset: after homing the crane is physically at (HOME_OFFSET_X, HOME_OFFSET_Y)
@@ -37,8 +45,8 @@ return {
     RELAY_PERIPHERAL = "redstone_relay_61",
 
     -- Modem sides for ECNet2 communication (one per physical computer)
-    CLIENT_MODEM_SIDE = "top",    -- crane computer (runs client.lua)
-    SERVER_MODEM_SIDE = "front",    -- panel computer (runs panel.lua, kiosk.lua)
+    CLIENT_MODEM_SIDE = "top",       -- crane computer (runs crane-client.lua)
+    SERVER_MODEM_SIDE = "front",     -- panel computer (runs crane-panel.lua, crane-load-unload.lua)
 
     -- Redstone relay output sides (on the relay block)
     AXIS_SIDE = "top",
@@ -49,6 +57,10 @@ return {
     -- motor moves in the opposite direction from what the coordinate system expects.
     INVERSE_X = false,
     INVERSE_Y = false,
+
+    -- ECNet2 timing (seconds). Used by both crane-panel and crane-load-unload.
+    CONNECTION_TIMEOUT = 15,     -- panel marks crane as disconnected after this silence
+    KEEPALIVE_INTERVAL = 7,      -- seconds between keepalive pings
 
     -- Monitor peripheral name (for crane-load-unload.lua)
     MONITOR_PERIPHERAL = "monitor_1132",

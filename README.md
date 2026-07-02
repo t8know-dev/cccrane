@@ -29,19 +29,20 @@ cccrane/                          ← deploy root
 │   ├── remote_config.lua         # Remote-control config (panel address, heartbeat)
 │   └── lib/
 │       ├── crane.lua             # Crane hardware control library
-│       └── panel_ui.lua          # PixelUI-based terminal panel UI
+│       ├── panel_ui.lua          # PixelUI-based terminal panel UI
+│       └── peripherals.lua       # Peripheral wait utilities
 │
 ├── lib/                          # Third-party libraries
 │   ├── pixelui.lua               # PixelUI widget framework
 │   └── shrekbox.lua              # PixelUI rendering engine
 │
-├── data/                         # Saved data
-│   ├── pickup_points.lua         # Named pickup points
-│   └── drop_points.lua           # Named drop-off points
-│
 ├── modules/                      # Monitor wizard submodules
 │   ├── load_unload_state.lua     # State management for load/unload UI
 │   └── monitor_ui.lua            # Monitor rendering for load/unload UI
+│
+├── data/                         # Saved data
+│   ├── pickup_points.lua         # Named pickup points
+│   └── drop_points.lua           # Named drop-off points
 │
 ├── examples/                     # Example scripts
 │   ├── ecnet_client.lua          # Minimal ECNet2 client example
@@ -51,7 +52,7 @@ cccrane/                          ← deploy root
 ├── ecnet2/                       # ECNet2 networking library (third-party)
 ├── ccryptolib/                   # Crypto library: Chacha20, Ed25519, etc.
 │
-└── .crane-state                  # (auto) Persistent state file
+└── cccrane/.crane-state          # (auto) Persistent state file
 ```
 
 ## Requirements
@@ -77,8 +78,8 @@ cccrane/                          ← deploy root
 
 | Relay output | Signal | Function |
 |---|---|---|
-| `AXIS_SIDE` (front) | LOW = X, HIGH = Y | Axis selection gearshift |
-| `LIFT_SIDE` (top) | HIGH = enable | Lift motor power |
+| `AXIS_SIDE` (top) | LOW = X, HIGH = Y | Axis selection gearshift |
+| `LIFT_SIDE` (left) | HIGH = enable | Lift motor power |
 | `STICKER_SIDE` (bottom) | Pulse = toggle | Sticker grab/release |
 
 ## Installation
@@ -182,11 +183,13 @@ All tunable parameters are in `src/config.lua`:
 | `MOVE_SETTLE_DELAY` | 0.2 | Extra settling after gear movement stops |
 | `GEAR_PERIPHERAL` | `"right"` | Side of the precision mechanism |
 | `RELAY_PERIPHERAL` | `"left"` | Side of the redstone relay |
-| `AXIS_SIDE` | `"front"` | Relay output for axis selection |
-| `LIFT_SIDE` | `"top"` | Relay output for lift |
+| `AXIS_SIDE` | `"top"` | Relay output for axis selection |
+| `LIFT_SIDE` | `"left"` | Relay output for lift |
 | `STICKER_SIDE` | `"bottom"` | Relay output for sticker |
 | `INVERSE_X` | `false` | Invert X-axis movement direction |
 | `INVERSE_Y` | `false` | Invert Y-axis movement direction |
+| `CONNECTION_TIMEOUT` | 15 | Seconds without message before disconnect |
+| `KEEPALIVE_INTERVAL` | 7 | Seconds between keepalive pings |
 | `MONITOR_PERIPHERAL` | `"monitor_15"` | Monitor peripheral name (load/unload UI) |
 
 ### Transport height
@@ -219,6 +222,7 @@ Message format:
 | `COMMAND` | Panel → Crane | Command: GOTO, PICKUP, DROP, HOME, EMERGENCY_STOP, STATUS_QUERY |
 | `CONFIG_QUERY` | Panel → Crane | Request crane config (dimensions, limits) |
 | `CONFIG_RESPONSE` | Crane → Panel | Config data response |
+| `PING` | Panel → Crane | Keepalive ping |
 
 Commands:
 
@@ -230,6 +234,7 @@ Commands:
 | `HOME` | `{}` | Execute homing cycle |
 | `EMERGENCY_STOP` | `{}` | Immediate stop |
 | `STATUS_QUERY` | `{}` | Force status report |
+| `PICKANDDROP` | `{ src, dst }` | Full pick-up-transport-drop cycle (crane-client only) |
 
 ### Connection lifecycle
 
@@ -248,6 +253,27 @@ Panel (Listener)                    Crane (Connector)
       |   <-- STATUS {idle} --              |
 ```
 
+### ECNet2 daemon architecture
+
+Both panel and client run inside `parallel.waitForAny()` with three concurrent threads:
+
+```
+parallel.waitForAny(
+    mainLoop,      ← handles commands, timers, reconnect logic
+    msgRouter,     ← captures ECNet2 messages, forwards EMERGENCY_STOP immediately
+    ecnet2.daemon  ← ECNet2 event processing (modem I/O, connection management)
+)
+```
+
+- **`mainLoop`** — processes heartbeats, handles incoming commands, runs crane operations. Blocks during crane movement (sleep-based polling of `gear.isRunning()`).
+- **`msgRouter`** (client only) — catches ALL `ecnet2_message` events and:
+  - Handles `EMERGENCY_STOP` immediately (even while the main loop is blocked in a crane operation)
+  - Re-queues everything else as `crane_msg` events for the main loop
+  - Sends periodic STATUS broadcasts while the crane is busy (every 3s)
+- **`ecnet2.daemon`** — ECNet2's internal event loop. Processes modem events, manages connections, dispatches serialized/deserialized messages.
+
+This three-thread architecture ensures emergency stop works even during blocking crane operations.
+
 ### Resilience
 
 | Scenario | Behaviour |
@@ -257,17 +283,37 @@ Panel (Listener)                    Crane (Connector)
 | **Crane busy, new command arrives** | Rejected with `ACK {status="error", message="Crane is busy"}` |
 | **Panel restarts** | Crane detects send failure, reconnects with exponential backoff |
 | **Crane restarts** | Panel detects disconnect; crane re-connects and re-registers |
-| **Unexpected chunk unload** | `.crane-state` with `craneRunning=true` triggers homing on next start |
+| **Unexpected chunk unload** | `cccrane/.crane-state` with `craneRunning=true` triggers homing on next start |
 
 ### State persistence
 
-The crane saves its position and sticker state to `/.crane-state` after every physical change. On startup:
+The crane saves its position and sticker state to `cccrane/.crane-state` after every physical change. On startup:
 
 - **No file / corrupted** → full homing cycle
 - **`craneRunning=false`** → skip homing, restore saved position
 - **`craneRunning=true`** → previous run was interrupted → full homing
 
 State is written atomically (temp file + rename) to prevent corruption from abrupt chunk unloads.
+
+#### `.crane-state` file format
+
+```lua
+-- Auto-generated by src/lib/crane.lua
+-- Content is textutils.serialized, {compact=true}
+{version:1,currentX:10,currentY:5,stickerOn:false,craneRunning:false}
+```
+
+Fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `version` | int | State format version (currently 1) |
+| `currentX` | int | Last known crane position X |
+| `currentY` | int | Last known crane position Y |
+| `stickerOn` | bool | Whether the sticker/grapple is engaged |
+| `craneRunning` | bool | `true` while an operation is in progress |
+
+The `craneRunning` flag is the crash-detection mechanism: if the computer restarts or the chunk unloads mid-operation, the flag remains `true` and the next startup performs a full homing cycle.
 
 ### Signal flow (local mode)
 
@@ -303,7 +349,7 @@ Computer
 
 | Problem | Solution |
 |---|---|
-| `No saved state found, homing...` on every start | Check `/.crane-state` file permissions |
+| `No saved state found, homing...` on every start | Check `cccrane/.crane-state` file permissions |
 | Crane won't move | Check peripheral sides in `src/config.lua` |
 | ECNet2 connection failure | Verify both computers have a modem on `top` and panel address is correct |
 | Panel doesn't see crane | Check wireless range (use Ender modem / range extender) |

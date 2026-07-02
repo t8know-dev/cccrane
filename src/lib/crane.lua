@@ -1,4 +1,4 @@
--- crane.lua v1.6.0 — CC: Create crane controller library
+-- crane.lua — CC: Create crane controller library
 -- Extracted from crane.lua for use as a reusable module.
 -- Loads configuration from src/config.lua.
 --
@@ -11,16 +11,18 @@
 --
 -- State persistence:
 --   The crane tracks its position, sticker state, and whether an operation
---   is in progress in a file (/.crane-state). This survives chunk unloads so
+--   is in progress in a file (cccrane/.crane-state). This survives chunk unloads so
 --   that homing can be skipped when the crane shut down cleanly. If the crane
 --   was interrupted mid-operation (chunk unload / Ctrl+T), the next run will
 --   detect craneRunning=true and perform a full homing cycle.
 --
---   Reliability: saveState() checks the f.write() return value and aborts the
---   atomic rename if the write was incomplete — a stale state file is safer than
---   a truncated one. loadState() additionally validates that currentX/currentY
---   are present numbers after deserialization; a partial file that happens to
---   deserialize to a table will not silently use the module-scope defaults of 0.
+--   Reliability: saveState() writes to a .tmp file and then verifies the
+--   written content by reading it back and deserializing before performing the
+--   atomic rename — a stale state file is safer than a truncated one.
+--   loadState() validates that currentX/currentY are present numbers after
+--   deserialization; a partial file that happens to deserialize to a table
+--   (but without those fields) will return false and trigger homing rather
+--   than silently using the module-scope defaults of 0.
 --
 -- Chunk-loading resilience:
 --   Peripherals (gear, relay) are in different chunks than the computer.
@@ -32,8 +34,8 @@
 local cfg = dofile("cccrane/src/config.lua")
 local periph = dofile("cccrane/src/lib/peripherals.lua")
 
-local STATE_FILE = ".crane-state"
-local STATE_FILE_TMP = ".crane-state.tmp"
+local STATE_FILE = "cccrane/.crane-state"
+local STATE_FILE_TMP = "cccrane/.crane-state.tmp"
 local STATE_VERSION = 1
 
 ------------------------------------------------------------
@@ -51,24 +53,50 @@ local state = {
 local EMERGENCY_STOP = false
 
 local function saveState()
+    -- Write state to a temporary file.
     local f = fs.open(STATE_FILE_TMP, "w")
     if not f then
         print("WARNING: could not open state file for writing")
         return
     end
-    local ok = f.write(textutils.serialize(state, { compact = true }))
+    f.write(textutils.serialize(state, { compact = true }))
     f.close()
 
-    -- If the write didn't complete (e.g. chunk unload during write), don't
-    -- trash the existing STATE_FILE. A stale STATE_FILE is better than none.
-    if not ok then
-        print("WARNING: state write may have been truncated, keeping existing state")
+    -- Read back and verify the written content. In CC:Tweaked, f.write() doesn't
+    -- return a meaningful boolean (it returns nil on success, like Lua's standard
+    -- file:write()), so we can't check the return value. Instead we verify by
+    -- reading the temp file back and attempting to deserialize it. This catches
+    -- truncation from chunk unloads that happen between write and close.
+    local vf = fs.open(STATE_FILE_TMP, "r")
+    if vf then
+        local content = vf.readAll()
+        vf.close()
+        local ok, result = pcall(textutils.unserialize, content)
+        if not ok or type(result) ~= "table" or type(result.currentX) ~= "number" then
+            print("WARNING: state write verification failed, keeping existing state")
+            fs.delete(STATE_FILE_TMP)
+            return
+        end
+        -- Verify that all required fields survived
+        if type(result.currentY) ~= "number" or type(result.stickerOn) ~= "boolean"
+           or type(result.craneRunning) ~= "boolean" then
+            print("WARNING: state write verification incomplete, keeping existing state")
+            fs.delete(STATE_FILE_TMP)
+            return
+        end
+    else
+        -- Can't verify - temp file might not exist. Don't trash good state.
+        print("WARNING: could not verify written state, keeping existing state")
         if fs.exists(STATE_FILE_TMP) then
             fs.delete(STATE_FILE_TMP)
         end
         return
     end
 
+    -- Atomic rename: replace old state with verified new state.
+    -- If a chunk unload happens between delete and move, there's no state file —
+    -- loadState() will return false and trigger homing on next start. This is
+    -- safe (a homing cycle is harmless) and unavoidable on CC without atomic fs ops.
     fs.delete(STATE_FILE)
     fs.move(STATE_FILE_TMP, STATE_FILE)
 end
@@ -412,6 +440,14 @@ end
 
 --- Initialise the crane: wait for peripherals, load saved state, home if needed, mark as running.
 function craneInit()
+    -- Validate configuration before doing anything.
+    if cfg.TRANSPORT_LOWER > cfg.LIFT_HEIGHT then
+        error(string.format(
+            "Config error: TRANSPORT_LOWER (%d) > LIFT_HEIGHT (%d). Transport height would be negative.",
+            cfg.TRANSPORT_LOWER, cfg.LIFT_HEIGHT
+        ))
+    end
+
     -- Wait for gear and relay peripherals before doing anything.
     -- This handles the case where the computer loaded before the chunks
     -- containing its mechanical blocks.

@@ -54,8 +54,8 @@ Edytuj `/cccrane/src/config.lua`:
 | `TRANSPORT_LOWER` | 10 | O ile niżej opuścić ładunek podczas transportu |
 | `GEAR_PERIPHERAL` | `"right"` | Strona precyzyjnego mechanizmu |
 | `RELAY_PERIPHERAL` | `"left"` | Strona przekaźnika redstone |
-| `AXIS_SIDE` | `"front"` | Wyjście wyboru osi |
-| `LIFT_SIDE` | `"top"` | Wyjście wciągarki |
+| `AXIS_SIDE` | `"top"` | Wyjście wyboru osi |
+| `LIFT_SIDE` | `"left"` | Wyjście wciągarki |
 | `STICKER_SIDE` | `"bottom"` | Wyjście stickera |
 | `INVERSE_X` | `false` | Odwrócenie kierunku X |
 | `INVERSE_Y` | `false` | Odwrócenie kierunku Y |
@@ -161,9 +161,9 @@ cccrane/crane-load-unload
 
 ---
 
-## 6. Plik stanu (`.crane-state`)
+## 6. Plik stanu (`cccrane/.crane-state`)
 
-Żuraw zapisuje pozycję i stan stickera do `/.crane-state`. Przy starcie:
+Żuraw zapisuje pozycję i stan stickera do `cccrane/.crane-state`. Przy starcie:
 - Brak pliku → homing
 - `craneRunning=false` → pomija homing, wznawia pozycję
 - `craneRunning=true` → przerwana operacja → homing
@@ -174,7 +174,7 @@ cccrane/crane-load-unload
 
 | Problem | Rozwiązanie |
 |---|---|
-| Homing przy każdym starcie | Sprawdź `/.crane-state` |
+| Homing przy każdym starcie | Sprawdź `cccrane/.crane-state` |
 | Żuraw nie rusza | Sprawdź peryferia w `src/config.lua` |
 | Błąd ECNet2 | Modem na `top` + poprawny adres panelu |
 | Panel nie widzi żurawia | Zasięg modemu |
