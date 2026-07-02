@@ -12,7 +12,7 @@ A [ComputerCraft: Create](https://mods.twitch.tv/cccreate) program that controls
 - **Crash recovery** — detects interrupted operations (chunk unload / Ctrl+T) and re-homes automatically
 - **Remote control via ECNet2** — encrypted wireless communication between a control panel computer and the crane computer
 - **Monitor-based wizard UI** — load/unload panel for small monitors with point selection
-- **Dual panel UIs** — full terminal GUI (`crane-panel`) or monitor wizard (`crane-load-unload`)
+- **Dual panel UIs** — full terminal GUI (`panel`) or monitor wizard (`kiosk`)
 - **Saveable points** — named pickup/drop-off locations persisted to disk
 
 ## Project structure
@@ -20,9 +20,9 @@ A [ComputerCraft: Create](https://mods.twitch.tv/cccreate) program that controls
 ```
 cccrane/                          ← deploy root
 ├── crane.lua                     # CLI entry: crane <srcX> <srcY> <dstX> <dstY>
-├── crane-client.lua              # Remote-control daemon (runs on the crane computer)
-├── crane-panel.lua               # Full terminal GUI control panel (ECNet2 server)
-├── crane-load-unload.lua         # Monitor-based load/unload wizard UI
+├── client.lua                    # Remote-control daemon (runs on the crane computer)
+├── panel.lua                     # Full terminal GUI control panel (ECNet2 server)
+├── kiosk.lua                     # Monitor-based load/unload wizard UI
 │
 ├── src/                          # Application source
 │   ├── config.lua                # Hardware config (dimensions, timing, peripherals)
@@ -119,7 +119,7 @@ cccrane/crane 10 5 42 30
 **1. Start the control panel** (panel computer):
 
 ```
-cccrane/crane-panel
+cccrane/panel
 ```
 
 The panel prints its ECNet2 address on startup:
@@ -150,7 +150,7 @@ return {
 **3. Start the crane daemon** (crane computer):
 
 ```
-cccrane/crane-client
+cccrane/client
 ```
 
 The daemon connects to the panel, registers itself, and waits for commands.
@@ -160,7 +160,7 @@ The daemon connects to the panel, registers itself, and waits for commands.
 For a small monitor (2×1 block, 30 lines), run the wizard-style panel:
 
 ```
-cccrane/crane-load-unload
+cccrane/kiosk
 ```
 
 This provides a touch-friendly picker for pickup/drop-off points and executes a full pick-and-drop cycle.
@@ -234,7 +234,7 @@ Commands:
 | `HOME` | `{}` | Execute homing cycle |
 | `EMERGENCY_STOP` | `{}` | Immediate stop |
 | `STATUS_QUERY` | `{}` | Force status report |
-| `PICKANDDROP` | `{ src, dst }` | Full pick-up-transport-drop cycle (crane-client only) |
+| `PICKANDDROP` | `{ src, dst }` | Full pick-up-transport-drop cycle (client only) |
 
 ### Connection lifecycle
 

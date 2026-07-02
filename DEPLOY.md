@@ -35,7 +35,7 @@ Wszystkie pliki trafiają do katalogu `/cccrane/`.
 ```
 /cccrane/crane.lua
 /cccrane/src/lib/crane.lua
-/cccrane/crane-client.lua         # (tylko tryb zdalny)
+/cccrane/client.lua         # (tylko tryb zdalny)
 /cccrane/src/config.lua
 /cccrane/src/remote_config.lua    # (tylko tryb zdalny)
 /cccrane/ecnet2/
@@ -74,7 +74,7 @@ cccrane/crane 10 5 42 30
 ### 2.4. Uruchomienie — tryb zdalny
 
 ```
-cccrane/crane-client
+cccrane/client
 ```
 
 Klient automatycznie połączy się z panelem i będzie czekał na komendy.
@@ -86,7 +86,7 @@ Klient automatycznie połączy się z panelem i będzie czekał na komendy.
 ### 3.1. Wymagane pliki
 
 ```
-/cccrane/crane-panel.lua
+/cccrane/panel.lua
 /cccrane/src/config.lua
 /cccrane/src/lib/panel_ui.lua
 /cccrane/lib/pixelui.lua
@@ -98,7 +98,7 @@ Klient automatycznie połączy się z panelem i będzie czekał na komendy.
 ### 3.2. Uruchomienie
 
 ```
-cccrane/crane-panel
+cccrane/panel
 ```
 
 Panel wyświetli swój adres ECNet2. Skopiuj go, a następnie na komputerze żurawia edytuj `/cccrane/src/remote_config.lua`:
@@ -118,7 +118,7 @@ return {
 ### 3.3. Panel na monitor (load/unload)
 
 ```
-cccrane/crane-load-unload
+cccrane/kiosk
 ```
 
 ---
@@ -129,9 +129,9 @@ cccrane/crane-load-unload
 ┌──────────────────────────┐     ECNet2     ┌──────────────────────────┐
 │  KOMPUTER ŻURAWIA        │ ◄══════════►   │  KOMPUTER PANELU        │
 │                          │                │                          │
-│  crane.lua               │                │  crane-panel.lua         │
+│  crane.lua               │                │  panel.lua               │
 │  src/lib/crane.lua       │                │  src/config.lua          │
-│  crane-client.lua        │                │  src/lib/panel_ui.lua    │
+│  client.lua              │                │  src/lib/panel_ui.lua    │
 │  src/config.lua          │                │  lib/pixelui.lua         │
 │  src/remote_config.lua   │                │  lib/shrekbox.lua        │
 │  ecnet2/                 │                │  ecnet2/                 │
@@ -155,8 +155,8 @@ cccrane/crane-load-unload
 4. Pobierz pliki: `gitclone cccrane jigga2`
 5. Skonfiguruj `src/config.lua` na żurawiu
 6. (Tryb zdalny) Skonfiguruj `src/remote_config.lua` z adresem panelu
-7. (Tryb zdalny) Uruchom panel: `cccrane/crane-panel`
-8. (Tryb zdalny) Uruchom klienta: `cccrane/crane-client`
+7. (Tryb zdalny) Uruchom panel: `cccrane/panel`
+8. (Tryb zdalny) Uruchom klienta: `cccrane/client`
 9. Test: `cccrane/crane 0 0 1 1`
 
 ---
@@ -185,7 +185,7 @@ cccrane/crane-load-unload
 
 ## 8. Użycie panelu load/unload na monitorze
 
-Panel `crane-load-unload` działa na małym monitorze (2×1 blok, ~15×30 znaków przy skali 0.5).
+Panel `kiosk` działa na małym monitorze (2×1 blok, ~15×30 znaków przy skali 0.5).
 
 Wymaga plików punktów w `data/`:
 - `data/pickup_points.lua` — punkty załadunku
