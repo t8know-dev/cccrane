@@ -16,6 +16,12 @@
 --   was interrupted mid-operation (chunk unload / Ctrl+T), the next run will
 --   detect craneRunning=true and perform a full homing cycle.
 --
+--   Reliability: saveState() checks the f.write() return value and aborts the
+--   atomic rename if the write was incomplete — a stale state file is safer than
+--   a truncated one. loadState() additionally validates that currentX/currentY
+--   are present numbers after deserialization; a partial file that happens to
+--   deserialize to a table will not silently use the module-scope defaults of 0.
+--
 -- Chunk-loading resilience:
 --   Peripherals (gear, relay) are in different chunks than the computer.
 --   At startup, craneInit() waits for each peripheral with a pcall(peripheral.wrap)
@@ -47,11 +53,22 @@ local EMERGENCY_STOP = false
 local function saveState()
     local f = fs.open(STATE_FILE_TMP, "w")
     if not f then
-        print("WARNING: could not write state (tmp)")
+        print("WARNING: could not open state file for writing")
         return
     end
-    f.write(textutils.serialize(state, { compact = true }))
+    local ok = f.write(textutils.serialize(state, { compact = true }))
     f.close()
+
+    -- If the write didn't complete (e.g. chunk unload during write), don't
+    -- trash the existing STATE_FILE. A stale STATE_FILE is better than none.
+    if not ok then
+        print("WARNING: state write may have been truncated, keeping existing state")
+        if fs.exists(STATE_FILE_TMP) then
+            fs.delete(STATE_FILE_TMP)
+        end
+        return
+    end
+
     fs.delete(STATE_FILE)
     fs.move(STATE_FILE_TMP, STATE_FILE)
 end
@@ -72,9 +89,18 @@ local function loadState()
         return false
     end
 
+    -- Critical: validate the deserialized data contains the required position fields.
+    -- A truncated state file (from chunk unload mid-write) may deserialize to a
+    -- table missing currentX/currentY. Without this check, the module-scope defaults
+    -- of 0 would be silently retained, and the next operation would move from (0,0)
+    -- to the target — ignoring the crane's actual physical position.
+    if type(result.currentX) ~= "number" or type(result.currentY) ~= "number" then
+        return false
+    end
+
     -- Merge loaded data with known defaults (forward compat)
-    if type(result.currentX) == "number" then state.currentX = result.currentX end
-    if type(result.currentY) == "number" then state.currentY = result.currentY end
+    state.currentX = result.currentX
+    state.currentY = result.currentY
     if type(result.stickerOn) == "boolean" then state.stickerOn = result.stickerOn end
     if type(result.craneRunning) == "boolean" then state.craneRunning = result.craneRunning end
 
