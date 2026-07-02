@@ -2,8 +2,9 @@
 -- Each entry: { name = "Display Name", x = X, y = Y }
 return {
     { name = "Red", x = 3, y = 39 },
-    { name = "Loading Bay 2", x = 60, y = 20 },
-    { name = "Storage Rack A", x = 40, y = 50 },
-    { name = "Train Station",  x = 10, y = 40 },
-    { name = "Container Yard", x = 85, y = 45 },
+    { name = "Green", x = 14, y = 39 },
+    { name = "Orange", x = 41, y = 39 },
+    { name = "Brown",  x = 76, y = 23 },
+    { name = "Blue", x = 59, y = 23 },
+    { name = "StationST16", x = 11, y = 2 },
 }

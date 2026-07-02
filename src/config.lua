@@ -14,7 +14,7 @@ touching the logic.
 
 return {
     -- Application version (single source of truth)
-    VERSION = "v0.5",
+    VERSION = "v0.6",
 
     -- Grid dimensions (in blocks). The crane can move within [0, MAX_X] × [0, MAX_Y].
     MAX_X = 97,

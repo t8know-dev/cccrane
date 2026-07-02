@@ -2,8 +2,8 @@
 -- Each entry: { name = "Display Name", x = X, y = Y }
 return {
     { name = "Cargo1", x = 11, y = 34 },
-    { name = "Station B", x = 30, y = 40 },
-    { name = "Workshop",  x = 50, y = 15 },
-    { name = "Warehouse", x = 10, y = 50 },
-    { name = "Depot",     x = 80, y = 30 },
+    { name = "Cargo2", x = 26, y = 35 },
+    { name = "Cargo3",  x = 41, y = 34 },
+    { name = "Cargo4", x = 56, y = 34 },
+    { name = "StationST14", x = 11, y = 18 },
 }
